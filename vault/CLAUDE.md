@@ -47,13 +47,20 @@ status: inbox
 
 ## Wiki folder routing
 
+Folder routing rules live in `vault/FOLDERS.md` — read that file at the start of every compile run. It is the single source of truth. New folders can be added there without code changes.
+
+Default folders:
+
 | Folder | What goes here |
 |--------|---------------|
 | `wiki/concepts/` | Factual, settled knowledge — definitions, how things work, established patterns |
 | `wiki/people/` | Named individuals — their ideas, quotes, background |
 | `wiki/projects/` | Active or completed projects with goals and status |
-| `wiki/areas/` | Ongoing areas of interest or responsibility (health, language learning, etc.) |
-| `wiki/brainstorm/` | Speculative ideas, creative explorations, startup concepts, session captures — content that is exploratory rather than established |
+| `wiki/areas/` | Ongoing areas of responsibility |
+| `wiki/brainstorm/` | Speculative ideas, creative explorations, startup concepts (prefix title "Idea: ") |
+| `wiki/learning/` | Structured learning: course notes, book notes, exercise banks, grammar references — use subfolders by subject (e.g. `learning/spanish/`, `learning/books/`) |
+
+Key distinction: `learning/` is for course/book/practice material; `concepts/` is for general settled knowledge any reader would want.
 
 ## Brainstorm page format
 

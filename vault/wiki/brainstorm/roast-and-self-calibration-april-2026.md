@@ -12,7 +12,7 @@ A candid April 2026 self-assessment session: part satirical roast, part honest c
 
 ## The Roast (highlights)
 
-- Named dog **Pixel** (full branded creative sprint). Named bird **Birdy** (shipped with zero testing). This is how every project at Nexteer goes.
+- Named dog **Pixel** (full branded creative sprint). 
 - Rode high-speed rail in China and turned it into an architectural insight. Invented [[Idea: SBRF (Semantic Business Record Format)]] on a train. Normal people look out the window.
 - Created **Vibe Coding** as a movement — then gave it a four-role approval framework and a change management process. The vibes are thoroughly regulated.
 - Built a security experiment showing source code can be reconstructed via phone camera — then made it a **leadership deliverable for Andy Wilson**.

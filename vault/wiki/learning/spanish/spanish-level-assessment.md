@@ -1,5 +1,5 @@
 ---
-title: "Spanish Level Assessment — Krzysztof (Units 3–6)"
+title: "Spanish Level Assessment — Kris (Units 3–6)"
 date: 2026-04-19
 domain: personal
 tags: [spanish, language-learning, assessment, exercises, recall]
@@ -8,7 +8,7 @@ status: active
 
 # Spanish Level Assessment — Krzysztof (Units 3–6)
 
-A learner assessment and structured exercise bank for [[Krzysztof]], based on Units 3–6 of the Cuaderno de Tareas. Overall level: **A2 (solid) → approaching A2+**. Exercises are designed for spaced-repetition recall practice targeting his known error patterns.
+A learner assessment and structured exercise bank for [[Kris Mekwinski]], based on Units 3–6 of the Cuaderno de Tareas. Overall level: **A2 (solid) → approaching A2+**. Exercises are designed for spaced-repetition recall practice targeting his known error patterns.
 
 ## Key Points
 - Assessed across 10 grammar/vocabulary topics
@@ -175,7 +175,7 @@ me acuesto / te acuestas / se acuesta / nos acostamos / os acostáis / se acuest
 ---
 
 ## Related Concepts
-- [[Krzysztof]] — the learner this assessment is for
+- [[Kris Mekwinski]] — the learner this assessment is for
 - [[Spanish Grammar — Units 3–6 (A2)]] — the reference grammar page for these topics
 
 ## Sources

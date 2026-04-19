@@ -87,6 +87,12 @@ Kris Mekwinski is Director of Global Enterprise Architecture at Nexteer Automoti
 
 ---
 
+## Learning
+
+- **Spanish** — A2 (solid) → approaching A2+; completing Cuaderno de Tareas Units 3–6
+  - See [[Spanish Learning — Kris]] for progress, strengths, error patterns
+  - See [[Spanish Grammar — Units 3–6 (A2)]] for the grammar reference
+
 ## Related Concepts
 - [[Nexteer AI Strategy]] — strategy Kris leads
 - [[Coolify Infrastructure at Nexteer]] — project Kris owns

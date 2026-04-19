@@ -1,14 +1,14 @@
 ---
-title: "Spanish Learning — Krzysztof"
+title: "Spanish Learning — Kris"
 date: 2026-04-19
 domain: personal
 tags: [spanish, language-learning, assessment]
 status: active
 ---
 
-# Spanish Learning — Krzysztof
+# Spanish Learning — Kris
 
-An ongoing record of Krzysztof's Spanish learning progress, current level, strengths, error patterns, and recommended next steps based on coursework from the Cuaderno de Tareas.
+An ongoing record of Kris Mekwinski's Spanish learning progress, current level, strengths, error patterns, and recommended next steps based on coursework from the Cuaderno de Tareas.
 
 ## Current Level
 
