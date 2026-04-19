@@ -55,14 +55,13 @@ Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
 
 | Page | Path | Source Inbox File(s) |
 |---|---|---|
-| [[Spanish Grammar — Units 3–6]] | `wiki/concepts/spanish-grammar-units-3-6.md` | `2026-04-19-spanish-learning---cuaderno-de-tareas-units-3-6-summary.md` |
-| [[Spanish Learning — Krzysztof]] | `wiki/areas/spanish-learning-krzysztof.md` | `2026-04-19-spanish-level-assessment---exercise-bank---krzysztof--units-3-6.md` |
-| [[Spanish Exercise Bank — Units 3–6]] | `wiki/brainstorm/spanish-exercise-bank-units-3-6.md` | `2026-04-19-spanish-level-assessment---exercise-bank---krzysztof--units-3-6.md` |
+| [[Spanish Grammar — Units 3–6 (A2)]] | `wiki/concepts/spanish-grammar-units-3-6.md` | `2026-04-19-spanish-learning---cuaderno-de-tareas-units-3-6-summary.md` |
+| [[Krzysztof]] | `wiki/people/krzysztof.md` | `2026-04-19-spanish-level-assessment---exercise-bank---krzysztof--units-3-6.md` |
+| [[Spanish Level Assessment — Krzysztof (Units 3–6)]] | `wiki/areas/spanish-level-assessment-krzysztof.md` | `2026-04-19-spanish-level-assessment---exercise-bank---krzysztof--units-3-6.md` |
 
 **Notes:**
-- Domain: `personal` for all three pages (language learning / hobby).
-- Grammar reference routed to `wiki/concepts/` — settled factual knowledge covering 4 units of Spanish grammar (reflexive verbs, irregular present, prepositions, HAY/ESTAR/SER/TENER, articles, imperatives, gustar, metro directions, antonym pairs, Latin music genres).
-- Learner profile routed to `wiki/areas/` — ongoing responsibility/learning area, tracks Krzysztof's A2 level, strengths, error patterns, and next steps.
-- Exercise bank routed to `wiki/brainstorm/` — a practical, creative drill/practice toolkit (10 topics, fill-in-the-blank, cooking drills, dialogue drills, free-writing prompts).
-- All three pages are cross-linked to each other via wikilinks.
-- No prior Spanish pages existed in the wiki; these are the first entries in the `personal` domain language-learning cluster.
+- Both inbox files were Spanish/language-learning content; domain set to `personal`.
+- Grammar notes compiled into `wiki/concepts/` as settled A2 reference material covering Units 3–6 (reflexive verbs, irregular present, time/place prepositions, hay/estar/ser/tener, imperatives, gustar, metro directions).
+- Learner assessment and 10-topic exercise bank compiled into `wiki/areas/` (ongoing learning responsibility) rather than `wiki/brainstorm/` — it is a structured, recurring reference not a speculative idea.
+- Named learner **Krzysztof** received his own `wiki/people/` page with level summary (A2 solid → A2+), strengths, error patterns, and next steps.
+- All three pages are fully interlinked via wikilinks.
