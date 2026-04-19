@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+dist/
+vault/.vectors.json
+.DS_Store
+vault/.obsidian/
+trnscript.md

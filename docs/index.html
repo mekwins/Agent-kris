@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brain — Personal AI Second Brain</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2d3148;
+      --accent: #7c6dfa;
+      --accent2: #5db4fa;
+      --green: #4ade80;
+      --yellow: #facc15;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --code-bg: #161924;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    main { flex: 1; max-width: 860px; padding: 3rem 3.5rem; overflow-x: hidden; }
+
+    .nav-logo { font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 0.3rem; }
+    .nav-tagline { font-size: 0.78rem; color: var(--muted); margin-bottom: 2rem; }
+    .nav-section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 1.5rem 0 0.5rem; }
+    nav a {
+      display: block; color: var(--muted); text-decoration: none;
+      padding: 0.3rem 0.5rem; border-radius: 5px; font-size: 0.88rem;
+      transition: color 0.15s, background 0.15s;
+    }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 600; margin: 2.8rem 0 1rem; padding-top: 0.5rem; border-top: 1px solid var(--border); color: var(--text); }
+    h3 { font-size: 1.05rem; font-weight: 600; margin: 2rem 0 0.6rem; color: var(--accent2); }
+    p { margin-bottom: 1rem; color: var(--text); }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.3rem; }
+    strong { color: var(--text); font-weight: 600; }
+
+    .hero {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 2rem 2.5rem; margin-bottom: 2.5rem;
+    }
+    .hero-sub { color: var(--muted); font-size: 1.05rem; margin-top: 0.4rem; margin-bottom: 0; }
+    .status-row { display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
+    }
+    .badge-green { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+    .badge-yellow { background: rgba(250,204,21,0.12); color: var(--yellow); border: 1px solid rgba(250,204,21,0.25); }
+
+    code {
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em;
+      background: var(--code-bg); color: var(--accent2);
+      padding: 0.15em 0.4em; border-radius: 4px; border: 1px solid var(--border);
+    }
+    pre {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.2rem 1.4rem; overflow-x: auto; margin: 1rem 0 1.5rem;
+    }
+    pre code {
+      background: none; border: none; padding: 0;
+      font-size: 0.84rem; color: #c9d1d9; line-height: 1.65;
+    }
+    .comment { color: #6e7681; }
+
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+    th { text-align: left; padding: 0.6rem 1rem; background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    td { padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(124,109,250,0.04); }
+
+    .callout {
+      border-left: 3px solid var(--accent); background: rgba(124,109,250,0.07);
+      border-radius: 0 8px 8px 0; padding: 1rem 1.2rem; margin: 1.2rem 0; font-size: 0.92rem;
+    }
+    .callout.tip { border-color: var(--green); background: rgba(74,222,128,0.06); }
+    .callout.warn { border-color: var(--yellow); background: rgba(250,204,21,0.06); }
+    .callout-title { font-weight: 700; margin-bottom: 0.3rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .callout .callout-title { color: var(--accent); }
+    .callout.tip .callout-title { color: var(--green); }
+    .callout.warn .callout-title { color: var(--yellow); }
+
+    .arch {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.4rem; font-family: 'SF Mono', monospace; font-size: 0.8rem;
+      line-height: 1.7; color: #c9d1d9; overflow-x: auto; white-space: pre; margin: 1rem 0 1.5rem;
+    }
+
+    .tool-grid { display: grid; gap: 1rem; margin: 1rem 0 1.5rem; }
+    .tool-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.2rem 1.4rem; transition: border-color 0.15s;
+    }
+    .tool-card:hover { border-color: var(--accent); }
+    .tool-name { font-family: 'SF Mono', monospace; font-size: 0.9rem; color: var(--accent); font-weight: 600; margin-bottom: 0.4rem; }
+    .tool-desc { color: var(--muted); font-size: 0.88rem; margin-bottom: 0.7rem; }
+    .tool-params { font-size: 0.82rem; }
+    .param { display: inline-block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.15em 0.5em; margin: 0.15rem 0.2rem 0.15rem 0; font-family: monospace; color: var(--accent2); }
+    .param-req { border-color: rgba(93,180,250,0.4); }
+
+    .tree {
+      font-family: 'SF Mono', monospace; font-size: 0.83rem; line-height: 1.9;
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.2rem 1.4rem; margin: 1rem 0 1.5rem;
+    }
+    .tree-folder { color: var(--accent2); }
+    .tree-file { color: #c9d1d9; }
+    .tree-note { color: #6e7681; }
+
+    .tag-group { margin-bottom: 1.2rem; }
+    .tag { display: inline-block; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 0.2em 0.6em; font-size: 0.78rem; font-family: monospace; color: var(--muted); margin: 0.2rem; }
+
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li {
+      counter-increment: step; padding: 0.9rem 1rem 0.9rem 3.2rem;
+      position: relative; border-left: 2px solid var(--border);
+      margin-left: 1rem; margin-bottom: 0.5rem;
+    }
+    .steps li::before {
+      content: counter(step); position: absolute; left: -1.15rem; top: 0.85rem;
+      width: 2rem; height: 2rem; background: var(--accent); color: white;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      nav { display: none; }
+      main { padding: 2rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="nav-logo">🧠 Brain</div>
+  <div class="nav-tagline">Personal AI Second Brain</div>
+
+  <div class="nav-section">Overview</div>
+  <a href="#what-is-this">What is this</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#status">Phase status</a>
+
+  <div class="nav-section">Setup</div>
+  <a href="#prerequisites">Prerequisites</a>
+  <a href="#install">Installation</a>
+  <a href="#env">Environment variables</a>
+  <a href="#claude-desktop">Connect to Claude Desktop</a>
+
+  <div class="nav-section">Using the Brain</div>
+  <a href="#mcp-tools">MCP Tools</a>
+  <a href="#compile-agent">Compile agent</a>
+  <a href="#brainstorm">Brainstorm workflow</a>
+  <a href="#search">Search &amp; recall</a>
+
+  <div class="nav-section">Vault</div>
+  <a href="#vault-structure">Folder structure</a>
+  <a href="#frontmatter">Frontmatter schema</a>
+  <a href="#tags">Tag taxonomy</a>
+  <a href="#wikilinks">Wikilinks</a>
+
+  <div class="nav-section">Operations</div>
+  <a href="#server">Managing the server</a>
+  <a href="#commands">CLI commands</a>
+  <a href="#troubleshoot">Troubleshooting</a>
+</nav>
+
+<main>
+
+  <div class="hero">
+    <h1>🧠 Brain</h1>
+    <p class="hero-sub">A personal AI second brain — compile, search, and grow your knowledge through Claude Desktop.</p>
+    <div class="status-row">
+      <span class="badge badge-green">✓ MCP Server (SSE)</span>
+      <span class="badge badge-green">✓ Compile agent</span>
+      <span class="badge badge-green">✓ API key auth</span>
+      <span class="badge badge-green">✓ Hybrid search</span>
+      <span class="badge badge-yellow">◷ Live connectors (planned)</span>
+    </div>
+  </div>
+
+  <h2 id="what-is-this">What is this</h2>
+  <p>Brain is a local, AI-powered knowledge management system built around a markdown vault. Two active layers:</p>
+  <ul>
+    <li><strong>MCP Server</strong> — 6 tools Claude Desktop calls to search, write, recall, and compile vault content. Runs as a persistent SSE HTTP service on <code>localhost:8765</code>, protected by an API key.</li>
+    <li><strong>Compile Agent</strong> — an Anthropic API agentic loop (Claude Sonnet via Azure AI Foundry) that reads <code>inbox/</code>, extracts knowledge, writes interlinked wiki pages, and moves processed files to <code>processed/</code>.</li>
+  </ul>
+  <p>Your primary interface is <strong>Claude Desktop</strong>. You talk to Claude; Claude calls brain tools on your behalf. No terminal required for day-to-day use.</p>
+
+  <div class="callout tip">
+    <div class="callout-title">Core pattern</div>
+    You write rough notes → <code>brain_write</code> saves to inbox → <code>brain_compile</code> runs the agent → structured wiki pages appear with wikilinks, inbox file moves to processed/ → <code>brain_search</code> finds everything later.
+  </div>
+
+  <h2 id="architecture">Architecture</h2>
+<div class="arch">┌──────────────────────────────────────────────────────┐
+│               CLAUDE DESKTOP                         │
+│          (your primary interface)                    │
+└─────────────────────┬────────────────────────────────┘
+                      │ stdio (via mcp-remote bridge)
+                      ▼
+┌──────────────────────────────────────────────────────┐
+│               mcp-remote (npx)                       │
+│    bridges stdio ↔ SSE HTTP with x-api-key header    │
+└─────────────────────┬────────────────────────────────┘
+                      │ SSE  http://127.0.0.1:8765/sse
+                      ▼
+┌──────────────────────────────────────────────────────┐
+│          MCP SERVER  (LaunchAgent — always on)       │
+│  brain_search  brain_recall  brain_write             │
+│  brain_context  brain_relate  brain_compile          │
+└──────────┬──────────────────┬───────────────────────┘
+           │                  │ brain_compile triggers
+           │                  ▼
+           │     ┌────────────────────────────────┐
+           │     │       COMPILE AGENT            │
+           │     │  Azure AI Foundry (Claude)     │
+           │     │  inbox/ → wiki/ → processed/   │
+           │     └────────────────────────────────┘
+           │                  │
+           ▼                  ▼
+┌──────────────────────────────────────────────────────┐
+│              VAULT  (local filesystem)               │
+│  inbox/  processed/  wiki/  sources/                 │
+│  vault/.vectors.json  (local embedding store)        │
+└──────────────────────────────────────────────────────┘</div>
+
+  <div class="callout">
+    <div class="callout-title">Remote-ready design</div>
+    The SSE + API key setup means you can move the server to any host (VPS, Coolify) by changing one URL in the Claude Desktop config. The <code>mcp-remote</code> bridge handles the rest — same as the Nextrace connector pattern.
+  </div>
+
+  <h2 id="status">Phase status</h2>
+  <table>
+    <tr><th>Phase</th><th>Description</th><th>Status</th></tr>
+    <tr><td>1</td><td>MCP server, hybrid search, local vector store, Azure embeddings</td><td><span style="color:var(--green)">✓ Done</span></td></tr>
+    <tr><td>2</td><td>Compile agent (inbox → wiki → processed) + <code>brain_compile</code> MCP tool</td><td><span style="color:var(--green)">✓ Done</span></td></tr>
+    <tr><td>2b</td><td>SSE transport, API key auth, LaunchAgent, mcp-remote connection</td><td><span style="color:var(--green)">✓ Done</span></td></tr>
+    <tr><td>3</td><td>Live connectors — email IMAP, Teams</td><td><span style="color:var(--yellow)">Planned</span></td></tr>
+    <tr><td>4</td><td>Remote hosting (VPS / Coolify)</td><td><span style="color:var(--yellow)">Planned</span></td></tr>
+  </table>
+
+  <h2 id="prerequisites">Prerequisites</h2>
+  <ul>
+    <li><strong>Python 3.11+</strong> and <strong>uv</strong> — <code>brew install uv</code></li>
+    <li><strong>Node.js</strong> — for mcp-remote (<code>brew install node</code>)</li>
+    <li><strong>Claude Desktop</strong> (Mac or Windows)</li>
+    <li><strong>Azure OpenAI</strong> — <code>text-embedding-3-small</code> deployment</li>
+    <li><strong>Azure AI Foundry</strong> — Claude Sonnet deployment</li>
+  </ul>
+
+  <h2 id="install">Installation</h2>
+  <ol class="steps">
+    <li>
+      <strong>Install Python dependencies</strong>
+      <pre><code>cd /Users/krzysztofmekwinski/Desktop/Agent-kris
+uv sync</code></pre>
+    </li>
+    <li>
+      <strong>Create <code>.env</code></strong> — see <a href="#env" style="color:var(--accent2)">Environment variables</a> below
+    </li>
+    <li>
+      <strong>Bootstrap the vector index</strong> (first time, or after bulk vault changes)
+      <pre><code>uv run python scripts/index_vault.py</code></pre>
+    </li>
+    <li>
+      <strong>Register the LaunchAgent</strong> — starts the server automatically on login
+      <pre><code>launchctl load ~/Library/LaunchAgents/com.kris.brain-mcp.plist</code></pre>
+    </li>
+    <li>
+      <strong>Add brain to Claude Desktop config</strong> — see <a href="#claude-desktop" style="color:var(--accent2)">Connect to Claude Desktop</a>
+    </li>
+    <li>
+      <strong>Restart Claude Desktop</strong> — Cmd+Q then reopen
+    </li>
+  </ol>
+
+  <h2 id="env">Environment variables</h2>
+  <p>File: <code>.env</code> in the project root. All fields required except <code>MCP_API_KEY</code> (but strongly recommended).</p>
+  <pre><code><span class="comment"># Azure OpenAI — embeddings (text-embedding-3-small)</span>
+EMBEDDING_ENDPOINT=https://&lt;resource&gt;.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15
+EMBEDDING_API_KEY=&lt;azure-openai-key&gt;
+
+<span class="comment"># Azure AI Foundry — compile agent (Claude Sonnet)</span>
+ANTHROPIC_FOUNDRY_BASE_URL=https://&lt;resource&gt;.cognitiveservices.azure.com/anthropic/
+ANTHROPIC_FOUNDRY_API_KEY=&lt;foundry-key&gt;
+
+<span class="comment"># Vault paths</span>
+VAULT_PATH=./vault
+VECTORS_PATH=./vault/.vectors.json
+
+<span class="comment"># MCP server API key — required for all SSE connections</span>
+MCP_API_KEY=&lt;strong-random-key&gt;</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">Keep .env out of git</div>
+    <code>.env</code> is gitignored. Never commit it. Use <code>.env.example</code> to document shape without real values. Generate <code>MCP_API_KEY</code> with: <code>python3 -c "import secrets; print(secrets.token_urlsafe(32))"</code>
+  </div>
+
+  <h2 id="claude-desktop">Connect to Claude Desktop</h2>
+  <p>The brain server runs as a persistent SSE service. Claude Desktop connects through <code>mcp-remote</code>, which bridges stdio (what Claude Desktop speaks) to HTTP SSE (what the server speaks) — same pattern as the Nextrace connector.</p>
+
+  <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>:</p>
+  <pre><code>{
+  "mcpServers": {
+    "brain": {
+      "command": "/path/to/run-npx.sh",
+      "args": [
+        "mcp-remote",
+        "http://127.0.0.1:8765/sse",
+        "--header",
+        "x-api-key:&lt;your-MCP_API_KEY&gt;"
+      ]
+    }
+  }
+}</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">Moving to remote hosting</div>
+    When you host the server on a VPS or Coolify, change only the URL: <code>http://127.0.0.1:8765/sse</code> → <code>https://brain.yourdomain.com/sse</code>. The API key header stays the same.
+  </div>
+
+  <h2 id="mcp-tools">MCP Tools</h2>
+  <p>Ask Claude in natural language — it picks the right tool. You never call tools directly.</p>
+
+  <div class="tool-grid">
+    <div class="tool-card">
+      <div class="tool-name">brain_write</div>
+      <div class="tool-desc">Capture anything to <code>inbox/</code> and auto-embed for search. Starting point for every piece of content.</div>
+      <div class="tool-params">
+        <span class="param param-req">content</span>
+        <span class="param param-req">tags</span>
+        <span class="param param-req">domain: work | personal | learning</span>
+        <span class="param">title</span>
+        <span class="param">source_url</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-name">brain_compile</div>
+      <div class="tool-desc">Run the compilation agent. Processes inbox → wiki pages, moves compiled files to <code>processed/</code>, updates index and log.</div>
+      <div class="tool-params">
+        <span class="param">task: compile inbox | compile sources | lint | search</span>
+        <span class="param">limit: int</span>
+        <span class="param">query: string (search task only)</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-name">brain_search</div>
+      <div class="tool-desc">Search wiki and source content. Hybrid mode combines semantic vector search with keyword matching.</div>
+      <div class="tool-params">
+        <span class="param param-req">query</span>
+        <span class="param">scope: all | work | personal | learning</span>
+        <span class="param">mode: hybrid | semantic | keyword</span>
+        <span class="param">limit: int</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-name">brain_recall</div>
+      <div class="tool-desc">Fetch a specific wiki page and its wikilinked neighbors. Best for deep-diving a concept.</div>
+      <div class="tool-params">
+        <span class="param param-req">topic</span>
+        <span class="param">depth: 1 | 2</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-name">brain_context</div>
+      <div class="tool-desc">Returns the 10 most recently updated pages for a persona. Use at the start of a session to prime Claude with relevant context.</div>
+      <div class="tool-params">
+        <span class="param param-req">agent_type: work | personal | research</span>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-name">brain_relate</div>
+      <div class="tool-desc">Find the connection between two concepts — shared tags and shortest wikilink path between them.</div>
+      <div class="tool-params">
+        <span class="param param-req">concept_a</span>
+        <span class="param param-req">concept_b</span>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="compile-agent">Compile agent</h2>
+  <p>Triggered via <code>brain_compile</code>. Runs as an Anthropic API agentic loop with its own filesystem tools — fully autonomous once triggered.</p>
+
+  <h3>What happens on "compile inbox"</h3>
+  <ol class="steps">
+    <li>Lists <code>inbox/</code> files with <code>status: inbox</code></li>
+    <li>Reads each file and classifies domain + content type</li>
+    <li>Searches existing wiki for related pages (to generate wikilinks)</li>
+    <li>Writes structured wiki page to the correct folder (<code>concepts/</code>, <code>people/</code>, <code>projects/</code>, <code>areas/</code>, or <code>brainstorm/</code>)</li>
+    <li>Embeds the new page into the vector store for semantic search</li>
+    <li>Moves the inbox file to <code>processed/</code> — inbox stays clean</li>
+    <li>Updates <code>wiki/index.md</code> TOC and appends to <code>wiki/log.md</code></li>
+  </ol>
+
+  <h3>Tasks supported</h3>
+  <table>
+    <tr><th>Task</th><th>What it does</th></tr>
+    <tr><td><code>compile inbox</code></td><td>Process all unread inbox files → wiki pages, move to processed/</td></tr>
+    <tr><td><code>compile inbox limit=5</code></td><td>Same, max 5 files per run</td></tr>
+    <tr><td><code>compile sources</code></td><td>Recompile from <code>sources/</code> after connector sync</td></tr>
+    <tr><td><code>lint</code></td><td>Report broken wikilinks, orphan pages, bad frontmatter</td></tr>
+    <tr><td><code>search: question</code></td><td>Synthesize a cited answer from wiki content</td></tr>
+  </table>
+
+  <h3>Example prompts</h3>
+  <pre><code>"Save this note to my brain: [paste notes]"
+"Compile my inbox"
+"Lint my wiki and tell me what's broken"
+"What do I know about enterprise architecture?"
+"Search my brain: what is SBRF?"</code></pre>
+
+  <h2 id="brainstorm">Brainstorm workflow</h2>
+  <p><code>wiki/brainstorm/</code> is for speculative, creative, exploratory content — distinct from <code>concepts/</code> which holds settled knowledge.</p>
+
+  <h3>What belongs here</h3>
+  <ul>
+    <li>Startup ideas and innovation concepts</li>
+    <li>AI brainstorm session captures</li>
+    <li>Exploratory tech experiments</li>
+    <li>Anything that starts with "what if…"</li>
+  </ul>
+
+  <h3>Concepts vs Brainstorm</h3>
+  <table>
+    <tr><th></th><th>wiki/concepts/</th><th>wiki/brainstorm/</th></tr>
+    <tr><td>Content</td><td>Settled, factual knowledge</td><td>Speculative, exploratory ideas</td></tr>
+    <tr><td>Title prefix</td><td>None</td><td><code>Idea: </code></td></tr>
+    <tr><td>Required tag</td><td>domain tag</td><td><code>brainstorm</code></td></tr>
+    <tr><td>Status</td><td>active / archived</td><td>active / parked / archived</td></tr>
+    <tr><td>Key sections</td><td>Key Points, Related Concepts, Sources</td><td>The Spark, Core Concept, Open Questions, Related Concepts</td></tr>
+  </table>
+
+  <h2 id="search">Search &amp; recall</h2>
+  <table>
+    <tr><th>Mode</th><th>How it works</th><th>Best for</th></tr>
+    <tr><td><code>hybrid</code> (default)</td><td>Semantic + keyword merged</td><td>Most queries</td></tr>
+    <tr><td><code>semantic</code></td><td>Cosine similarity on Azure embeddings</td><td>"What do I know about X" — concept queries</td></tr>
+    <tr><td><code>keyword</code></td><td>Regex full-text scan</td><td>Exact phrase or name recall</td></tr>
+  </table>
+
+  <pre><code>"Search my brain for anything about enterprise architecture"
+"Recall the Claude Code page and its linked pages"
+"Find connections between MCP and agents"
+"Give me work context for my morning session"</code></pre>
+
+  <h2 id="vault-structure">Vault structure</h2>
+  <div class="tree">
+<span class="tree-folder">vault/</span>
+├── <span class="tree-file">CLAUDE.md</span>          <span class="tree-note">← vault schema, tag taxonomy, compile rules</span>
+├── <span class="tree-folder">inbox/</span>            <span class="tree-note">← uncompiled captures only (empty after compile)</span>
+├── <span class="tree-folder">processed/</span>        <span class="tree-note">← archive of compiled raw notes (moved by agent)</span>
+├── <span class="tree-folder">wiki/</span>             <span class="tree-note">← compiled, interlinked knowledge base</span>
+│   ├── <span class="tree-file">index.md</span>        <span class="tree-note">← master TOC (agent-maintained)</span>
+│   ├── <span class="tree-file">log.md</span>          <span class="tree-note">← activity log (agent-maintained)</span>
+│   ├── <span class="tree-folder">concepts/</span>     <span class="tree-note">← settled, factual knowledge</span>
+│   ├── <span class="tree-folder">people/</span>       <span class="tree-note">← one page per named person</span>
+│   ├── <span class="tree-folder">projects/</span>     <span class="tree-note">← active or past projects</span>
+│   ├── <span class="tree-folder">areas/</span>        <span class="tree-note">← ongoing responsibilities</span>
+│   └── <span class="tree-folder">brainstorm/</span>  <span class="tree-note">← speculative ideas, startup concepts</span>
+├── <span class="tree-folder">sources/</span>          <span class="tree-note">← immutable raw imports (connectors write here)</span>
+└── <span class="tree-file">.vectors.json</span>     <span class="tree-note">← local embedding store (gitignored)</span></div>
+
+  <h3>Folder routing (agent decides based on content)</h3>
+  <table>
+    <tr><th>Content type</th><th>Target</th><th>Title prefix</th></tr>
+    <tr><td>Settled / factual knowledge</td><td><code>wiki/concepts/</code></td><td>none</td></tr>
+    <tr><td>Named person</td><td><code>wiki/people/</code></td><td>none</td></tr>
+    <tr><td>Project with goals</td><td><code>wiki/projects/</code></td><td>none</td></tr>
+    <tr><td>Ongoing area of responsibility</td><td><code>wiki/areas/</code></td><td>none</td></tr>
+    <tr><td>Speculative idea / brainstorm session</td><td><code>wiki/brainstorm/</code></td><td><code>Idea: </code></td></tr>
+  </table>
+
+  <h2 id="frontmatter">Frontmatter schema</h2>
+  <pre><code>---
+title: "Page Title"
+date: 2026-04-19
+domain: work | personal | learning
+tags: [tag1, tag2]
+status: inbox | processed | active | parked | archived
+---</code></pre>
+  <table>
+    <tr><th>Field</th><th>Required</th><th>Notes</th></tr>
+    <tr><td><code>title</code></td><td>Yes</td><td>Human-readable string</td></tr>
+    <tr><td><code>date</code></td><td>Yes</td><td>YYYY-MM-DD</td></tr>
+    <tr><td><code>domain</code></td><td>Yes</td><td><code>work</code> / <code>personal</code> / <code>learning</code></td></tr>
+    <tr><td><code>tags</code></td><td>Yes</td><td>Array from tag taxonomy</td></tr>
+    <tr><td><code>status</code></td><td>Yes</td><td><code>inbox</code> (new) → moves to <code>processed/</code> after compile; wiki pages use <code>active</code> / <code>parked</code> / <code>archived</code></td></tr>
+    <tr><td><code>source_url</code></td><td>No</td><td>Origin URL for sourced content</td></tr>
+  </table>
+
+  <h2 id="tags">Tag taxonomy</h2>
+  <h3>Work</h3>
+  <div class="tag-group">
+    <span class="tag">nexteer</span><span class="tag">enterprise-architecture</span><span class="tag">ai-strategy</span>
+    <span class="tag">vibe-coding</span><span class="tag">governance</span><span class="tag">agents</span>
+    <span class="tag">mcp</span><span class="tag">coolify</span><span class="tag">claude-enterprise</span>
+  </div>
+  <h3>Personal</h3>
+  <div class="tag-group">
+    <span class="tag">health</span><span class="tag">language-learning</span><span class="tag">polish</span>
+    <span class="tag">spanish</span><span class="tag">travel</span><span class="tag">pixel</span><span class="tag">birdy</span>
+  </div>
+  <h3>Learning</h3>
+  <div class="tag-group">
+    <span class="tag">book</span><span class="tag">podcast</span><span class="tag">article</span>
+    <span class="tag">course</span><span class="tag">ai-research</span><span class="tag">engineering</span><span class="tag">programming</span>
+  </div>
+  <h3>Brainstorm</h3>
+  <div class="tag-group">
+    <span class="tag">startup-idea</span><span class="tag">innovation</span><span class="tag">brainstorm</span>
+    <span class="tag">creative</span><span class="tag">experiment</span><span class="tag">concept-draft</span>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">Domain routing</div>
+    Nexteer / EA / AI CoE / IT → <code>work</code> &nbsp;|&nbsp;
+    Health / family / hobbies / Pixel / Birdy → <code>personal</code> &nbsp;|&nbsp;
+    Books / courses / research / AI → <code>learning</code>
+  </div>
+
+  <h2 id="wikilinks">Wikilinks</h2>
+  <p>Pages link to each other with <code>[[Page Title]]</code> syntax. The compile agent searches for existing pages before writing, so links are woven in automatically.</p>
+  <ul>
+    <li>Link targets must match the <code>title</code> frontmatter of an existing wiki page</li>
+    <li>Broken links are reported by the <code>lint</code> task</li>
+    <li><code>brain_recall</code> follows wikilinks to depth 1 or 2</li>
+    <li><code>brain_relate</code> finds shortest paths between two concepts</li>
+  </ul>
+
+  <h2 id="server">Managing the server</h2>
+  <p>The MCP server runs as a macOS LaunchAgent — starts on login, restarts automatically if it crashes.</p>
+
+  <table>
+    <tr><th>Action</th><th>Command</th></tr>
+    <tr><td>Check server is up</td><td><code>curl -o /dev/null -w "%{http_code}" http://127.0.0.1:8765/sse --max-time 2</code> → expect <code>200</code></td></tr>
+    <tr><td>Restart after code changes</td><td><code>launchctl stop com.kris.brain-mcp &amp;&amp; launchctl start com.kris.brain-mcp</code></td></tr>
+    <tr><td>View live logs</td><td><code>tail -f ~/Library/Logs/brain-mcp.log</code></td></tr>
+    <tr><td>Stop completely</td><td><code>launchctl unload ~/Library/LaunchAgents/com.kris.brain-mcp.plist</code></td></tr>
+    <tr><td>Re-enable on login</td><td><code>launchctl load ~/Library/LaunchAgents/com.kris.brain-mcp.plist</code></td></tr>
+  </table>
+
+  <div class="callout warn">
+    <div class="callout-title">Restart required after code changes</div>
+    Any edit to <code>src/</code> files requires a server restart — Python loads modules at startup and the running process has the old code in memory.
+  </div>
+
+  <h2 id="commands">CLI commands</h2>
+  <pre><code><span class="comment"># Install / update dependencies</span>
+uv sync
+
+<span class="comment"># Rebuild full vector index (after bulk vault changes)</span>
+uv run python scripts/index_vault.py
+
+<span class="comment"># Run compile task from terminal (for testing)</span>
+uv run python -c "
+import asyncio; from src.agent import run
+print(asyncio.run(run('compile inbox')))
+"
+
+<span class="comment"># Run lint from terminal</span>
+uv run python -c "
+import asyncio; from src.agent import run
+print(asyncio.run(run('lint')))
+"
+
+<span class="comment"># Restart the MCP server</span>
+launchctl stop com.kris.brain-mcp &amp;&amp; launchctl start com.kris.brain-mcp
+
+<span class="comment"># Generate a new API key</span>
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"</code></pre>
+
+  <h2 id="troubleshoot">Troubleshooting</h2>
+
+  <h3>Brain tools not showing in Claude Desktop</h3>
+  <ul>
+    <li>Verify server is running: <code>curl -o /dev/null -w "%{http_code}" http://127.0.0.1:8765/sse --max-time 2</code> → must return <code>200</code></li>
+    <li>If server is down: <code>launchctl start com.kris.brain-mcp</code> then check <code>~/Library/Logs/brain-mcp.log</code></li>
+    <li>Verify the <code>x-api-key</code> value in Claude Desktop config matches <code>MCP_API_KEY</code> in <code>.env</code></li>
+    <li>Restart Claude Desktop after any config change (Cmd+Q, not just close)</li>
+    <li>Check Claude Desktop MCP logs: <code>tail ~/Library/Logs/Claude/mcp.log</code></li>
+  </ul>
+
+  <h3>Missing env var error on startup</h3>
+  <p>Check <code>.env</code> has all five keys: <code>EMBEDDING_ENDPOINT</code>, <code>EMBEDDING_API_KEY</code>, <code>ANTHROPIC_FOUNDRY_BASE_URL</code>, <code>ANTHROPIC_FOUNDRY_API_KEY</code>, <code>MCP_API_KEY</code>.</p>
+
+  <h3>Search returns no results</h3>
+  <p>Vector index may be empty or stale. Run <code>uv run python scripts/index_vault.py</code> to rebuild. Keyword search works without the index.</p>
+
+  <h3>Compile agent fails or stalls</h3>
+  <ul>
+    <li>Check Azure AI Foundry quota and endpoint availability</li>
+    <li>The agent has a 50-iteration safety cap — for large batches use <code>limit=5</code> to process in chunks</li>
+    <li>Test connectivity: <code>uv run python -c "import asyncio; from src.agent import run; print(asyncio.run(run('lint')))"</code></li>
+  </ul>
+
+  <h3>Inbox files not moving to processed/</h3>
+  <p>The server must be restarted after the <code>_mark_processed</code> change. Run: <code>launchctl stop com.kris.brain-mcp &amp;&amp; launchctl start com.kris.brain-mcp</code></p>
+
+  <footer style="margin-top:4rem; padding-top:1.5rem; border-top:1px solid var(--border); color:var(--muted); font-size:0.82rem;">
+    Brain — personal AI second brain for Kris Mekwinski &nbsp;·&nbsp; FastMCP · Anthropic SDK · Azure OpenAI · mcp-remote
+  </footer>
+
+</main>
+</div>
+</body>
+</html>
