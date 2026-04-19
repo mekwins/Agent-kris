@@ -31,7 +31,7 @@ Master table of contents for the second brain knowledge base.
 ## Projects
 
 - [[Coolify Infrastructure at Nexteer]] — Governed PaaS sandbox for Nexteer's Vibe Coding initiative
-- [[Nexteer Business Process Map – draw.io Diagram]] — Full draw.io recreation of the official Nexteer BPM across MOP, COP, and SOP swim-lanes
+- [[Nexteer Business Process Map – draw.io Diagram]] — Full draw.io recreation of the Nexteer BPM covering MOP, COP, and SOP lanes
 
 ---
 
@@ -56,7 +56,7 @@ Master table of contents for the second brain knowledge base.
 - [[Spanish Learning — Kris]] — Learner progress log: current level, strengths, error patterns, next steps
 - [[Spanish Level Assessment — Kris (Units 3–6)]] — Full assessment with 10-topic exercise bank for spaced-repetition practice
 - [[Spanish Exercise Bank — Units 3–6]] — Standalone drill bank: fill-in-the-blank, conjugation, dialogue practice
-- [[Spanish Verbs & CEFR Language Assessment]] — Key Spanish verb notes (recibir, poner, decir) + CEFR level reference and personal English assessment (B2–C1)
+- [[Spanish Verb Notes – recibir, poner, decir]] — Quick reference for key irregular Spanish verbs (recibir, poner, decir) with conjugation tables and CEFR level overview
 
 ### AI Research
 

@@ -97,12 +97,11 @@ Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
 | Page | Path | Source Inbox File(s) |
 |---|---|---|
 | [[Nexteer Business Process Map – draw.io Diagram]] | `wiki/projects/nexteer-business-process-map.md` | `2026-04-19-nexteer-business-process-map---draw-io-diagram.md` |
-| [[Spanish Verbs & CEFR Language Assessment]] | `wiki/learning/spanish/spanish-verbs-and-cefr-assessment.md` | `Translate recibir meaning.md` |
+| [[Spanish Verb Notes – recibir, poner, decir]] | `wiki/learning/spanish/spanish-verb-notes.md` | `Translate recibir meaning.md` |
 
 **Notes:**
-- Nexteer BPM routed to `wiki/projects/` — a clearly scoped Nexteer work artifact (draw.io diagram) with defined structure and output file.
-- BPM diagram covers three swim-lane tiers: MOP (blue, management-oriented), COP (green, customer-oriented), and SOP (amber, support functions). Full lane detail preserved.
-- Spanish learning session routed to `wiki/learning/spanish/` — ChatGPT conversation covering Spanish verbs (*recibir*, *poner*, *decir*) with conjugation tables, exercise error log, and a CEFR English self-assessment (B2–C1).
-- CEFR reference table compiled for ongoing use as a language-learning benchmark.
-- No existing wiki pages found for wikilinks on either item (first BPM artifact; Spanish verbs complement existing grammar/assessment pages).
-- `wiki/index.md` updated: new entry under Projects and new entry under Learning → Spanish.
+- Nexteer BPM note routed to `wiki/projects/` — it documents a concrete deliverable (a draw.io diagram artifact) with clear structure, lanes, and file output. Domain: `work`.
+- Spanish verb note was a ChatGPT clipping covering vocabulary lookups (recibir, poner, decir) and a CEFR English self-assessment; routed to `wiki/learning/spanish/`. Domain: `personal`.
+- CEFR level framework (A1–C2) captured in the Spanish page as a useful ongoing reference; the note-taker assessed at B2–C1 English based on conversational evidence.
+- Conjugation worksheet errors also captured for spaced-repetition awareness: queréis, vamos, dicen, aprendo.
+- No existing wiki pages matched on search for either topic — these are the first entries in their respective areas (Nexteer BPM diagrams, Spanish verb quick reference).
