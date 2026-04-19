@@ -87,3 +87,22 @@ Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
 - Key concept: LLM as compiler (ingest → compile → view → ask → create → maintain); no RAG needed at ~100 articles / ~400K words scale.
 - Notable: this vault's own architecture is an independent implementation of the same pattern, predating this inbox item. Strong external validation.
 - All three new pages fully interlinked; `wiki/index.md` updated with new entries under People, Concepts, and Learning → AI Research.
+
+---
+
+## 2026-04-19 — Compile Run #5
+
+Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
+
+| Page | Path | Source Inbox File(s) |
+|---|---|---|
+| [[Nexteer Business Process Map – draw.io Diagram]] | `wiki/projects/nexteer-business-process-map.md` | `2026-04-19-nexteer-business-process-map---draw-io-diagram.md` |
+| [[Spanish Verbs & CEFR Language Assessment]] | `wiki/learning/spanish/spanish-verbs-and-cefr-assessment.md` | `Translate recibir meaning.md` |
+
+**Notes:**
+- Nexteer BPM routed to `wiki/projects/` — a clearly scoped Nexteer work artifact (draw.io diagram) with defined structure and output file.
+- BPM diagram covers three swim-lane tiers: MOP (blue, management-oriented), COP (green, customer-oriented), and SOP (amber, support functions). Full lane detail preserved.
+- Spanish learning session routed to `wiki/learning/spanish/` — ChatGPT conversation covering Spanish verbs (*recibir*, *poner*, *decir*) with conjugation tables, exercise error log, and a CEFR English self-assessment (B2–C1).
+- CEFR reference table compiled for ongoing use as a language-learning benchmark.
+- No existing wiki pages found for wikilinks on either item (first BPM artifact; Spanish verbs complement existing grammar/assessment pages).
+- `wiki/index.md` updated: new entry under Projects and new entry under Learning → Spanish.
