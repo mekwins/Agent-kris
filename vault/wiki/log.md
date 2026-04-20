@@ -94,10 +94,10 @@ Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
 
 Processed **2 inbox files** from 2026-04-19. Created the following wiki pages:
 
-| Page | Path | Source Inbox File(s) |
-|---|---|---|
+| Page                                               | Path                                            | Source Inbox File(s)                                           |
+| -------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------- |
 | [[Nexteer Business Process Map – draw.io Diagram]] | `wiki/projects/nexteer-business-process-map.md` | `2026-04-19-nexteer-business-process-map---draw-io-diagram.md` |
-| [[Spanish Verb Notes – recibir, poner, decir]] | `wiki/learning/spanish/spanish-verb-notes.md` | `Translate recibir meaning.md` |
+| [[Spanish Verb Notes – recibir, poner, decir]]     | `wiki/learning/spanish/spanish-verb-notes.md`   | `Translate recibir meaning.md`                                 |
 
 **Notes:**
 - Nexteer BPM note routed to `wiki/projects/` — it documents a concrete deliverable (a draw.io diagram artifact) with clear structure, lanes, and file output. Domain: `work`.

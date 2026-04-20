@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -66,11 +67,15 @@ Brainstorm: startup-idea, innovation, brainstorm, creative, experiment, concept-
 - Brainstorm content inherits the nearest domain (startup idea → work, personal project → personal, research concept → learning)
 
 ## Folder routing
-- Factual / settled knowledge → wiki/concepts/
-- Named person → wiki/people/
-- Active or past project with goals → wiki/projects/
-- Ongoing responsibility or area → wiki/areas/
-- Speculative idea, startup concept, creative session, innovation brainstorm → wiki/brainstorm/
+At the start of every compile run, call read_vault_file("FOLDERS.md") to load the current folder registry and routing rules. That file is the single source of truth — always follow it. New folders can be added there without code changes.
+
+Default folders (if FOLDERS.md cannot be read):
+- wiki/concepts/ — factual/settled knowledge
+- wiki/people/ — named persons
+- wiki/projects/ — projects with goals
+- wiki/areas/ — ongoing responsibilities
+- wiki/brainstorm/ — speculative ideas (prefix: "Idea: ")
+- wiki/learning/ — course material, books, exercises, research
 
 ## Wiki page format
 ---
@@ -106,22 +111,18 @@ status: active
 8. Do not write to sources/ — it is read-only.
 
 ## Compile task (when asked to compile inbox)
-1. Call list_vault_files("inbox") to find files with status: inbox
-2. For each unprocessed file:
+1. Call read_vault_file("FOLDERS.md") to load the folder registry and routing rules
+2. Call list_vault_files("inbox") to find files with status: inbox
+3. For each unprocessed file:
    a. Call read_vault_file to get the content
    b. Identify the domain from content and tags
-   c. Determine the target folder using Folder routing rules:
-      - Speculative / ideas / brainstorm sessions → wiki/brainstorm/<slug>.md (title prefix "Idea: ")
-      - Factual knowledge → wiki/concepts/<slug>.md
-      - People mentioned → wiki/people/<slug>.md
-      - Projects → wiki/projects/<slug>.md
-      - Areas → wiki/areas/<slug>.md
+   c. Determine the target folder using the rules from FOLDERS.md (loaded in step 1)
    d. Call search_wiki before writing to find existing related pages for [[wikilinks]]
    e. Call write_vault_file with the compiled wiki page
    f. Call embed_wiki_page to index the new/updated page
    g. Call mark_processed on the inbox file
-3. Update wiki/index.md with links to any new pages (grouped by folder)
-4. Append a dated entry to wiki/log.md summarising what was compiled
+4. Update wiki/index.md with links to any new pages (grouped by folder)
+5. Append a dated entry to wiki/log.md summarising what was compiled
 
 ## Lint task (when asked to lint)
 Check every wiki/ page for:
@@ -384,10 +385,56 @@ class BrainAgent:
 
 
 # ---------------------------------------------------------------------------
+# Git auto-commit
+# ---------------------------------------------------------------------------
+
+def _git_commit(task: str) -> str | None:
+    """Stage all vault changes and commit with a timestamped message.
+    Returns the short commit hash, or None if there was nothing to commit.
+    """
+    repo = VAULT_PATH.parent
+    try:
+        # Stage everything inside vault/ (wiki, processed, sources, index, log)
+        subprocess.run(["git", "add", "vault/"], cwd=repo, check=True, capture_output=True)
+        # Check if there's actually anything staged
+        diff = subprocess.run(
+            ["git", "diff", "--cached", "--stat"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        )
+        if not diff.stdout.strip():
+            return None
+        today = date.today().isoformat()
+        msg = f"brain: {task} [{today}]"
+        result = subprocess.run(
+            ["git", "commit", "-m", msg],
+            cwd=repo, check=True, capture_output=True, text=True,
+        )
+        # Extract short hash from "main abc1234" style output
+        for line in result.stdout.splitlines():
+            if line.startswith("["):
+                return line.split()[1]
+        return "committed"
+    except subprocess.CalledProcessError:
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Convenience entry point
 # ---------------------------------------------------------------------------
+
+_COMPILE_TASKS = {"compile inbox", "compile sources"}
 
 async def run(task: str) -> str:
     """Module-level entry point for use by trigger layer and scripts."""
     agent = BrainAgent()
-    return await agent.run(task)
+    result = await agent.run(task)
+
+    # Auto-commit vault changes after any compile run
+    base_task = task.split(" limit=")[0].strip()
+    if base_task in _COMPILE_TASKS:
+        commit_hash = _git_commit(base_task)
+        if commit_hash:
+            result += f"\n\n---\n🗂 Vault changes committed to git ({commit_hash}). Run `git show` to inspect."
+        # Nothing new to commit is fine — no noise added to result
+
+    return result

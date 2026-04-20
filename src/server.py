@@ -11,7 +11,7 @@ import uvicorn
 from mcp.server.fastmcp import FastMCP
 from starlette.responses import Response
 
-from src.tools import brain_search, brain_recall, brain_write, brain_context, brain_relate
+from src.tools import brain_search, brain_recall, brain_write, brain_context, brain_relate, brain_clip
 from src import agent as brain_agent
 from src.config import MCP_API_KEY
 
@@ -97,6 +97,17 @@ async def brain_relate_tool(
 ) -> str:
     """Find the connection path and shared tags between two wiki concepts."""
     result = await brain_relate.run(concept_a, concept_b)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool()
+async def brain_clip_tool(
+    url: str,
+    domain: Literal["work", "personal", "learning"] = "learning",
+    tags: list[str] | None = None,
+) -> str:
+    """Clip a web page to the inbox. Fetches the URL, extracts the article as markdown, downloads images to vault/assets/. Compile afterwards to add it to the wiki."""
+    result = await brain_clip.run(url, domain=domain, tags=tags or ["article"])
     return json.dumps(result, indent=2)
 
 

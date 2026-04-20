@@ -69,6 +69,7 @@ connectors/
 | `brain_search` | `query`, `scope`, `mode` (hybrid/semantic/keyword) | Search vault |
 | `brain_recall` | `topic`, `depth` (1 or 2) | Fetch page + wikilinked neighbors |
 | `brain_write` | `content`, `tags`, `domain`, `title?`, `source_url?` | Write to inbox + auto-embed |
+| `brain_clip` | `url`, `domain?`, `tags?` | Fetch URL → markdown + download images to vault/assets/ |
 | `brain_context` | `agent_type` (work/personal/research) | Top-10 recent pages for a persona |
 | `brain_relate` | `concept_a`, `concept_b` | Shared tags + graph path between concepts |
 | `brain_compile` | `task`, `limit?`, `query?` | Run compilation agent (compile inbox/sources, lint, search) |
@@ -78,29 +79,35 @@ connectors/
 ```
 vault/
 ├── CLAUDE.md        — Vault schema, tag taxonomy, compile rules (agent reads this)
+├── FOLDERS.md       — Extensible folder registry (agent reads at compile start; add new folders here)
 ├── inbox/           — New notes land here via brain_write
 ├── wiki/            — Agent-compiled knowledge with [[wikilinks]]
 │   ├── index.md     — Master TOC (agent-maintained)
 │   ├── log.md       — Activity log (agent-maintained)
-│   ├── concepts/    — Settled, factual knowledge
+│   ├── concepts/    — Settled, general factual knowledge (not course-specific)
 │   ├── people/      — One page per named person
 │   ├── projects/    — Active/past projects with goals
 │   ├── areas/       — Ongoing areas of responsibility
-│   └── brainstorm/  — Speculative ideas, startup concepts, creative explorations
+│   ├── brainstorm/  — Speculative ideas, startup concepts, creative explorations
+│   └── learning/    — Course notes, book notes, exercise banks, grammar references
+│       └── spanish/ — Spanish learning content
 └── sources/         — Immutable raw inputs (connectors write here, agent reads)
     ├── work/
     └── personal/
 ```
 
-Folder routing (agent decides based on content type):
-- Factual/settled → `concepts/` | Person → `people/` | Project → `projects/` | Area → `areas/`
-- Speculative idea, startup, brainstorm session → `brainstorm/` (title prefixed `"Idea: "`)
+Folder routing: agent reads `vault/FOLDERS.md` at the start of every compile run. To add a new folder, edit FOLDERS.md and create the directory — no code changes needed.
+
+Key distinctions:
+- `learning/` vs `concepts/`: course/book/practice material → `learning/`; general settled knowledge → `concepts/`
+- `areas/` vs `learning/`: ongoing responsibility → `areas/`; personal learning progress → `learning/`
+- `brainstorm/` only for speculative/unvalidated ideas — not exercises, notes, or assessments
 
 ## Implementation status
 
 - ✅ Phase 1: MCP server + hybrid search + local vector store + Azure embeddings
 - ✅ Phase 2: Agent SDK compilation loop (`src/agent.py`) + `brain_compile` MCP tool — tested end-to-end
-- ✅ Vault extended: `wiki/brainstorm/` for speculative ideas and creative explorations
+- ✅ Vault restructured: `wiki/learning/` added; folder routing moved to `vault/FOLDERS.md` (extensible without code changes)
 - 🔲 Phase 3: Live connectors — email, Teams (`connectors/`)
 - 🔲 Phase 4: Continuous use and vault growth
 
