@@ -6,6 +6,10 @@ dist/
 .DS_Store
 trnscript.md
 
+# Vault data lives in its own repo (brain-vaults), cloned into ./vaults locally.
+# The code repo tracks only the engine, not the knowledge base.
+/vaults/
+
 # Per-vault derived caches (rebuild with scripts/index_vault.py)
 **/.vectors.json
 **/.obsidian/

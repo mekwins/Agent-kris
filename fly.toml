@@ -3,7 +3,7 @@
 # fly volumes create, fly secrets set, fly deploy.
 
 app = "kris-brain-mcp"
-primary_region = "iad"   # change to your nearest region (e.g. "ams", "lhr")
+primary_region = "ord"   # Chicago — closest to Michigan/US-Central
 
 [build]
   dockerfile = "Dockerfile"
@@ -14,6 +14,9 @@ primary_region = "iad"   # change to your nearest region (e.g. "ams", "lhr")
   VAULTS_ROOT = "/data/vaults"
   WIKIS_CONFIG = "/app/wikis.toml"
   DEFAULT_WIKI = "work"
+  # Vault data source of truth (cloned onto the volume at boot). No scheme/token
+  # here — the entrypoint prepends https + the GITHUB_TOKEN secret.
+  VAULTS_REPO = "github.com/mekwins/brain-vaults.git"
 
 # Personal brain: one machine, one volume. All vaults and their vector stores
 # live on the volume, which is bound to a single machine — do NOT scale to

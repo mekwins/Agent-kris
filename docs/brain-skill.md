@@ -38,6 +38,7 @@ When user types /brain (with or without arguments), follow this decision tree:
 /brain compile            → COMPILE: call brain_compile(task="compile inbox")
 /brain lint               → LINT: call brain_compile(task="lint")
 /brain relate [a] [b]     → RELATE: call brain_relate(concept_a, concept_b)
+/brain task [what] for [who] → TASK: brain_write a task note, then brain_compile
 /brain [anything else]    → INFER intent from the content and pick the right tool
 ```
 
@@ -59,15 +60,16 @@ No arguments = prime the session. Load work context and summarize what's in the 
 4. Offer: "Run /brain compile to process it into the wiki"
 
 ### On /brain save ... or "save to my brain"
-1. Extract: title, content body, domain, tags from context
-2. Infer domain using routing rules below
+1. Pick the target `wiki` from intent (see Vault routing below); if unsure, call `brain_list_wikis` or ask.
+2. Extract: title, content body, tags from context
 3. Call `brain_write` with these **separate parameters** — do NOT embed frontmatter in content:
+   - `wiki`: the chosen vault id
    - `content`: plain markdown body text only (no YAML, no frontmatter — the tool adds it automatically)
    - `title`: page title as a string
-   - `domain`: "work" | "personal" | "learning"
-   - `tags`: list of strings from the taxonomy below
+   - `domain`: a domain string valid for that vault (from `brain_list_wikis`)
+   - `tags`: list of strings from that vault's taxonomy
    - `source_url`: optional, if content came from a URL
-4. Confirm: "Saved to inbox as [title] · tags: [tags] · domain: [domain]"
+4. Confirm: "Saved to [wiki] inbox as [title] · tags: [tags]"
 5. Optionally offer: "Run /brain compile to process it into the wiki"
 
 ### On /brain search ... or "what do I know about..."
@@ -86,8 +88,19 @@ No arguments = prime the session. Load work context and summarize what's in the 
 2. Report what was processed: how many files, what pages were created
 3. If compile fails or returns empty: suggest checking inbox, offer lint
 
+### On /brain task ... or "add a task ... for [person]"
+Tasks are supported in **every** vault. To capture one:
+1. Pick the target `wiki` from intent (a work task → `work`, homework → `spanish`, personal to-do → `personal`).
+2. `brain_write(wiki=..., domain="tasks", title=<short task title>, content=<what needs doing, mentioning the person(s) by name>, tags=["task"])`.
+3. Then `brain_compile(wiki=..., task="compile inbox")` — the compile agent does the cross-referencing automatically:
+   - It searches for each named person: **links an existing `people/` page if found, or creates a stub if not** (never invents facts, never duplicates).
+   - It writes a `wiki/tasks/` page with `status`/`assignee`/`due`, links the person(s) and any related project, and adds an `## Assigned Tasks` back-link on the person's page.
+4. Confirm: "Added task '[title]' to [wiki] · assignee: [person] · linked [N] people/projects."
+
+Example: "add a task to send the onboarding pack to Kristina" → if Kristina is unknown, a `people/kristina.md` stub is created and linked; if she already exists, the existing page is reused.
+
 ### On "search my brain: [question]" — Synthesis mode
-Use `brain_compile(task="search", query=...)` for agent-synthesized answers, not raw search results. This is the power mode — full cited synthesis from the vault.
+Use `brain_compile(task="search", query=..., wiki=...)` for agent-synthesized answers, not raw search results. This is the power mode — full cited synthesis from a vault.
 
 ---
 

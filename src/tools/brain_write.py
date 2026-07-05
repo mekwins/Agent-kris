@@ -1,4 +1,4 @@
-from src import vault as vault_ops, embed as embedder, vector_store
+from src import vault as vault_ops, embed as embedder, vector_store, gitsync
 from src.vaults import get_vault
 
 
@@ -20,4 +20,12 @@ async def run(
         embeddings = await embedder.embed_batch(texts)
         vector_store.upsert(vault, page_slug, chunks, embeddings)
 
-    return {"wiki": vault.id, "path": rel_path, "committed": True, "chunks_indexed": len(chunks)}
+    # Push the capture to GitHub so it reaches every other clone (best-effort).
+    pushed = gitsync.commit_and_push(vault, f"brain[{vault.id}]: capture {rel_path}")
+
+    return {
+        "wiki": vault.id,
+        "path": rel_path,
+        "committed": bool(pushed),
+        "chunks_indexed": len(chunks),
+    }

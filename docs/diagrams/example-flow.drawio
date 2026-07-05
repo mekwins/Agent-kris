@@ -1,0 +1,87 @@
+<mxfile host="app.diagrams.net" agent="brain-docs" version="24.0.0">
+  <diagram name="Example flow" id="brain-example-flow">
+    <mxGraphModel dx="1000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Worked example — &quot;Add a task to send the EA onboarding pack to Kristina; follow up with Ravi Ganda&quot;" style="text;html=1;fontSize=15;fontStyle=1;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="780" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- 1. sentence -->
+        <mxCell id="s1" value="① You say it to Claude (wiki = work)&#10;&quot;Add a task to send the EA onboarding pack to Kristina by Friday; follow up with Ravi Ganda on Kafka Pod 1.&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="80" width="480" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- 2. brain_write -->
+        <mxCell id="s2" value="② brain_write(wiki=&quot;work&quot;, domain=&quot;tasks&quot;)&#10;→ writes work/inbox/2026-07-05-send-ea-onboarding-pack-to-kristina.md (status: inbox)&#10;→ embeds the note into work/.vectors.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="185" width="480" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- 3. compile agent -->
+        <mxCell id="s3" value="③ brain_compile(wiki=&quot;work&quot;) — the agent loop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="300" width="640" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a1" value="a. read .brain/folders.md + profile.toml&#10;   (learns: task → wiki/tasks/, schema: assignee/status/due)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="345" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="b. search_wiki(&quot;Kristina&quot;) → NOT FOUND → create people/kristina.md (stub, no invented facts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#d79b00;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="405" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="c. search_wiki(&quot;Ravi Ganda&quot;) → FOUND → reuse existing page (NO duplicate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#d79b00;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="455" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="d. write tasks/*.md with frontmatter (status: open, assignee, due) + [[wikilinks]] to people &amp; project" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="505" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="e. add &quot;## Assigned Tasks&quot; back-link on Kristina &amp; Ravi pages (bidirectional link)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="555" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="f. embed_wiki_page(each) → work/.vectors.json   ·   mark_processed(inbox note) → work/processed/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#82b366;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="605" width="640" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- 4. resulting graph -->
+        <mxCell id="s4" value="④ Resulting connected graph in work/wiki/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="680" width="640" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="g_task1" value="tasks/&#10;Send EA Onboarding Pack to Kristina&#10;(assignee: Kris, due: 2026-07-11)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="120" y="730" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="g_task2" value="tasks/&#10;Follow Up with Ravi Ganda on Kafka Pod 1&#10;(assignee: Ravi, status: open)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="540" y="730" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="g_kristina" value="people/kristina.md&#10;(new stub)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="120" y="840" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="g_ravi" value="people/ravi-ganda.md&#10;(existing — reused)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="540" y="840" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="g_proj" value="areas/&#10;IT 2.0 Modern Technical Architecture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="330" y="930" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 5. retrieval -->
+        <mxCell id="s5" value="⑤ Later retrieval — brain_recall(&quot;Ravi Ganda&quot;) returns his page AND the linked task via its &quot;Assigned Tasks&quot; section (and Obsidian shows the backlink for free)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1020" width="640" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- flow edges -->
+        <mxCell id="f1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="s1" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="s2" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="a6" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- graph link edges (wikilinks) -->
+        <mxCell id="l1" value="[[Kristina]]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;fontSize=9;" edge="1" parent="1" source="g_task1" target="g_kristina"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l2" value="[[Ravi Ganda]]" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;fontSize=9;" edge="1" parent="1" source="g_task2" target="g_ravi"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l3" value="Assigned Tasks" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;dashed=1;fontSize=9;" edge="1" parent="1" source="g_kristina" target="g_task1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l4" value="Assigned Tasks" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;dashed=1;fontSize=9;" edge="1" parent="1" source="g_ravi" target="g_task2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l5" value="related" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;fontSize=9;" edge="1" parent="1" source="g_task1" target="g_proj"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l6" value="related" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;fontSize=9;" edge="1" parent="1" source="g_task2" target="g_proj"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="g_proj" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

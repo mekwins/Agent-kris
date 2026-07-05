@@ -13,16 +13,13 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
-# Application code + vault registry.
+# Application code + vault registry. Vault *data* is NOT baked into the image;
+# the entrypoint clones the brain-vaults repo onto the volume at boot (see
+# docker-entrypoint.sh) so GitHub stays the single source of truth.
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY wikis.toml ./wikis.toml
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-
-# The vaults shipped in the repo become a read-only seed. On first boot the
-# entrypoint copies them into the persistent volume if it's empty, so real
-# writes (inbox, wiki, .vectors.json) survive redeploys.
-COPY vaults/ ./vaults-seed/
 
 RUN chmod +x ./docker-entrypoint.sh
 

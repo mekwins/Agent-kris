@@ -1,26 +1,39 @@
 #!/usr/bin/env sh
 set -e
 
-# Seed the persistent volume from the image on first boot only.
-# VAULTS_ROOT lives on the mounted fly volume (/data/vaults); the bundled copy
-# lives at /app/vaults-seed. If the volume has no vaults yet, copy the seed in.
+# The persistent fly volume (mounted at /data) is the live copy of the vaults.
+# GitHub (brain-vaults) is the source of truth. On boot we make sure the volume
+# holds a clone of that repo and is up to date; the compile agent pushes back.
 : "${VAULTS_ROOT:=/data/vaults}"
-SEED_DIR="/app/vaults-seed"
+: "${VAULTS_REPO:=}"   # e.g. github.com/mekwins/brain-vaults.git (no scheme/token)
 
-if [ ! -d "$VAULTS_ROOT" ] || [ -z "$(ls -A "$VAULTS_ROOT" 2>/dev/null)" ]; then
-    echo "[entrypoint] Seeding vaults at $VAULTS_ROOT from $SEED_DIR"
+# Build the authenticated remote from the token secret (never printed).
+remote_url() {
+    if [ -n "$GITHUB_TOKEN" ]; then
+        echo "https://x-access-token:${GITHUB_TOKEN}@${VAULTS_REPO}"
+    else
+        echo "https://${VAULTS_REPO}"
+    fi
+}
+
+if [ -n "$VAULTS_REPO" ]; then
+    if [ ! -d "$VAULTS_ROOT/.git" ]; then
+        echo "[entrypoint] Cloning vaults repo into $VAULTS_ROOT"
+        rm -rf "$VAULTS_ROOT"
+        git clone "$(remote_url)" "$VAULTS_ROOT" || echo "[entrypoint] WARNING: clone failed"
+    fi
+    if [ -d "$VAULTS_ROOT/.git" ]; then
+        # Refresh the tokenised remote (the token may rotate between deploys),
+        # set the commit identity, and pull the latest before serving.
+        git -C "$VAULTS_ROOT" remote set-url origin "$(remote_url)" || true
+        git -C "$VAULTS_ROOT" config user.email "brain@fly.local" || true
+        git -C "$VAULTS_ROOT" config user.name "brain-mcp" || true
+        git -C "$VAULTS_ROOT" config pull.rebase true || true
+        git -C "$VAULTS_ROOT" pull --rebase --autostash || echo "[entrypoint] pull skipped"
+    fi
+else
+    echo "[entrypoint] VAULTS_REPO unset — using whatever is already on the volume"
     mkdir -p "$VAULTS_ROOT"
-    cp -a "$SEED_DIR/." "$VAULTS_ROOT/"
-fi
-
-# Initialise a git repo on the data volume so the compile agent's per-vault
-# auto-commit works and the vaults get a local version history.
-DATA_ROOT="$(dirname "$VAULTS_ROOT")"
-if [ ! -d "$DATA_ROOT/.git" ]; then
-    echo "[entrypoint] Initialising git repo at $DATA_ROOT"
-    git init -q "$DATA_ROOT" || true
-    git -C "$DATA_ROOT" config user.email "brain@fly.local" || true
-    git -C "$DATA_ROOT" config user.name "brain-mcp" || true
 fi
 
 exec "$@"

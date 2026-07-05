@@ -17,7 +17,6 @@ Supported tasks:
 from __future__ import annotations
 
 import json
-import subprocess
 from datetime import date
 from typing import Any
 
@@ -25,7 +24,7 @@ import frontmatter as fm
 from anthropic import AsyncAnthropic
 
 from src.config import ANTHROPIC_FOUNDRY_BASE_URL, ANTHROPIC_FOUNDRY_API_KEY
-from src import vault as vault_ops, vector_store
+from src import vault as vault_ops, vector_store, gitsync
 from src import embed as embedder
 from src.vaults import Vault, get_vault
 
@@ -46,6 +45,7 @@ ENGINE_PROMPT = """You are a knowledge compiler for a personal second-brain vaul
   - wiki/areas/        — ongoing areas of interest or responsibility
   - wiki/brainstorm/   — speculative ideas and creative explorations
   - wiki/learning/     — course/book/practice material (subfolder per subject)
+  - wiki/tasks/        — actionable tasks (any vault); each links to its assignee
 - sources/       — immutable raw inputs (read-only — never write here)
 
 ## Wiki page format
@@ -77,6 +77,24 @@ status: active
 4. After writing any wiki page, call embed_wiki_page to index it for search.
 5. Call mark_processed on each inbox file after compiling it into wiki pages.
 6. Do not write to sources/ — it is read-only.
+
+## Tasks and people cross-referencing (applies to EVERY vault)
+Tasks can appear in any vault. When a note describes something to do (or the
+user says "add a task to ... for <person>"):
+1. Create/update a page in wiki/tasks/ named after the task. Frontmatter:
+   title, status (open|done), assignee, due (optional), related, tags.
+2. Resolve every named person BEFORE writing the task:
+   a. Call search_wiki with the person's name to check if they already exist.
+   b. If a wiki/people/ page exists, reuse it — link as [[Their Name]] and set
+      assignee to that exact title. Do NOT create a duplicate.
+   c. If they do NOT exist, create a short wiki/people/<name>.md stub (just the
+      name and that they were referenced — never invent facts) and link to it.
+3. Link the task to any related project/concept with [[wikilinks]].
+4. On the assignee's people page, add the task under an "## Assigned Tasks"
+   section as [[Task Title]] — so the link is bidirectional and shows up in
+   both retrieval (brain_recall) and Obsidian's backlinks panel.
+This resolve-or-create-then-link behavior is how the vault stays a connected
+graph rather than a pile of disconnected notes.
 
 ## Folder routing
 At the start of every compile run, call read_vault_file(".brain/folders.md") to
@@ -356,45 +374,6 @@ class BrainAgent:
 
 
 # ---------------------------------------------------------------------------
-# Git auto-commit (best-effort, per vault)
-# ---------------------------------------------------------------------------
-
-def _git_commit(vault: Vault, task: str) -> str | None:
-    """Stage this vault's changes and commit. Best-effort: returns hash or None.
-
-    Walks up from the vault path to find a git repo; if none, or git is not
-    installed, silently returns None (never crashes a compile run).
-    """
-    try:
-        root = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=vault.path, capture_output=True, text=True,
-        )
-        if root.returncode != 0:
-            return None
-        repo = root.stdout.strip()
-        subprocess.run(["git", "add", str(vault.path)], cwd=repo, check=True, capture_output=True)
-        diff = subprocess.run(
-            ["git", "diff", "--cached", "--stat"],
-            cwd=repo, check=True, capture_output=True, text=True,
-        )
-        if not diff.stdout.strip():
-            return None
-        today = date.today().isoformat()
-        msg = f"brain[{vault.id}]: {task} [{today}]"
-        result = subprocess.run(
-            ["git", "commit", "-m", msg],
-            cwd=repo, check=True, capture_output=True, text=True,
-        )
-        for line in result.stdout.splitlines():
-            if line.startswith("["):
-                return line.split()[1]
-        return "committed"
-    except Exception:
-        return None
-
-
-# ---------------------------------------------------------------------------
 # Convenience entry point
 # ---------------------------------------------------------------------------
 
@@ -402,15 +381,28 @@ _COMPILE_TASKS = {"compile inbox", "compile sources"}
 
 
 async def run(task: str, wiki: str | None = None) -> str:
-    """Module-level entry point. Runs `task` against the given (or default) vault."""
+    """Module-level entry point. Runs `task` against the given (or default) vault.
+
+    For compile tasks we pull the vault repo first (so we build on the latest
+    content from other clones), then commit + push afterwards (so the results
+    reach GitHub and every other clone). Both are best-effort.
+    """
     vault = get_vault(wiki)
+    base_task = task.split(" limit=")[0].strip()
+    is_compile = base_task in _COMPILE_TASKS
+
+    if is_compile:
+        gitsync.pull(vault)
+
     agent = BrainAgent(vault)
     result = await agent.run(task)
 
-    base_task = task.split(" limit=")[0].strip()
-    if base_task in _COMPILE_TASKS:
-        commit_hash = _git_commit(vault, base_task)
+    if is_compile:
+        msg = f"brain[{vault.id}]: {base_task} [{date.today().isoformat()}]"
+        commit_hash = gitsync.commit_and_push(vault, msg)
         if commit_hash:
-            result += f"\n\n---\nVault '{vault.id}' changes committed to git ({commit_hash})."
+            result += (
+                f"\n\n---\nVault '{vault.id}' changes committed and pushed ({commit_hash})."
+            )
 
     return result
