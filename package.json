@@ -1,0 +1,8 @@
+{
+  "name": "brain-mcp-server",
+  "version": "0.1.0",
+  "description": "Personal AI second brain — Python/Streamlit app",
+  "scripts": {
+    "build": "echo 'Python project — no build step required'"
+  }
+}
