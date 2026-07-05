@@ -1,0 +1,39 @@
+# fly.io config for the Brain MCP server.
+# Rename `app` to something unique, then: fly launch --no-deploy (to register),
+# fly volumes create, fly secrets set, fly deploy.
+
+app = "kris-brain-mcp"
+primary_region = "iad"   # change to your nearest region (e.g. "ams", "lhr")
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8080"
+  VAULTS_ROOT = "/data/vaults"
+  WIKIS_CONFIG = "/app/wikis.toml"
+  DEFAULT_WIKI = "work"
+
+# Personal brain: one machine, one volume. All vaults and their vector stores
+# live on the volume, which is bound to a single machine — do NOT scale to
+# multiple machines without moving to shared storage.
+[[mounts]]
+  source = "brain_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  # SSE is a long-lived stream; keep concurrency generous for a single user.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

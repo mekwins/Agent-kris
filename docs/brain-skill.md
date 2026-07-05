@@ -4,19 +4,25 @@ Personal AI second brain integration via the brain MCP server. Use this skill IM
 
 ## What this skill does
 
-Integrates Claude with the brain MCP server (localhost:8765) — a personal markdown vault with hybrid semantic+keyword search, a compile agent, and wikilinked knowledge pages.
+Integrates Claude with the brain MCP server — a set of **multiple vaults** (wikis), each a markdown knowledge base with hybrid semantic+keyword search, a compile agent, and wikilinked pages.
 
-The 6 MCP tools available (Claude calls them automatically — user never calls them directly):
+### Multi-vault: always pick the right `wiki` first
+There are several vaults (e.g. `work`, `spanish`, `personal`). **Every tool accepts an optional `wiki` param.** At the start of a brain interaction (or whenever the target is ambiguous), call `brain_list_wikis` to see the available vaults and their descriptions, then pass the matching `wiki` to subsequent calls. If the user's intent clearly maps to one vault (e.g. Spanish homework → `spanish`; a Nexteer project → `work`), use it directly. When unsure, ask which vault or default to `work`.
+
+The MCP tools available (Claude calls them automatically — user never calls them directly):
 
 | Tool | Purpose | Key params |
 |------|---------|-----------|
-| `brain_search` | Hybrid search across wiki + sources | `query`, `scope`: all\|work\|personal\|learning, `mode`: hybrid\|semantic\|keyword |
-| `brain_recall` | Fetch a wiki page + wikilinked neighbors | `topic`, `depth`: 1\|2 |
-| `brain_write` | Capture content to inbox/ | `content`, `tags`, `domain`: work\|personal\|learning, `title` |
-| `brain_clip` | Clip a web URL to inbox/ (fetches page + downloads images) | `url`, `domain`, `tags` |
-| `brain_compile` | Run the compile agent (inbox → wiki) | `task`: compile inbox\|lint\|search, `limit`, `query` |
-| `brain_context` | Load recent pages for session priming | `agent_type`: work\|personal\|research |
-| `brain_relate` | Find connection between two concepts | `concept_a`, `concept_b` |
+| `brain_list_wikis` | List available vaults + descriptions/domains/types | _(none)_ |
+| `brain_search` | Hybrid search across wiki + sources | `query`, `scope`, `mode`: hybrid\|semantic\|keyword, `wiki` |
+| `brain_recall` | Fetch a wiki page + wikilinked neighbors | `topic`, `depth`: 1\|2, `wiki` |
+| `brain_write` | Capture content to inbox/ | `content`, `tags`, `domain`, `title`, `wiki` |
+| `brain_clip` | Clip a web URL to inbox/ (fetches page + downloads images) | `url`, `domain`, `tags`, `wiki` |
+| `brain_compile` | Run the compile agent (inbox → wiki) | `task`: compile inbox\|lint\|search, `limit`, `query`, `wiki` |
+| `brain_context` | Load recent pages for session priming | `agent_type` (optional domain), `wiki` |
+| `brain_relate` | Find connection between two concepts | `concept_a`, `concept_b`, `wiki` |
+
+`scope`, `domain`, tags, and folder routing are **per-vault** — they come from each vault's own profile (surfaced by `brain_list_wikis`), not a single global taxonomy.
 
 ---
 
@@ -85,27 +91,27 @@ Use `brain_compile(task="search", query=...)` for agent-synthesized answers, not
 
 ---
 
-## Domain routing (for brain_write)
+## Vault routing (which `wiki` to write to)
 
-| Content about | domain |
-|--------------|--------|
-| Nexteer, EA, AI CoE, IT, vibe coding, Coolify, Claude Enterprise, governance | work |
-| Health, family, hobbies, Pixel, Birdy, travel, Polish/Spanish learning | personal |
-| Books, courses, research, AI papers, engineering learning | learning |
+Pick the vault from the user's intent, then let that vault's own profile decide the `domain`/tags:
 
-## Tag taxonomy — pick from these:
+| Content about | wiki |
+|--------------|------|
+| Nexteer, EA, AI CoE, IT, projects, work people, governance | `work` |
+| Spanish lessons, homework, vocab, grammar, assessments | `spanish` |
+| Health, family, philosophy, books, personal reflection/discovery | `personal` |
 
-- **Work**: nexteer, enterprise-architecture, ai-strategy, vibe-coding, governance, agents, mcp, coolify, claude-enterprise
-- **Personal**: health, language-learning, polish, spanish, travel, pixel, birdy
-- **Learning**: book, podcast, article, course, ai-research, engineering, programming
-- **Brainstorm**: startup-idea, innovation, brainstorm, creative, experiment, concept-draft
+Tag taxonomy and folder routing are defined **per vault** in its `.brain/profile.toml`, `.brain/compile.md`, and `.brain/folders.md`. Call `brain_list_wikis` to see a vault's `domains` and note `types`, and let the compile agent apply that vault's rules — do not assume a single global taxonomy.
 
 ---
 
 ## Vault structure reference
 
+Every vault lives at `vaults/<id>/` and shares the same skeleton (folders each vault actually uses come from its `.brain/folders.md`):
+
 ```
-vault/
+vaults/<id>/
+├── .brain/         ← this vault's profile (profile.toml, compile.md, folders.md)
 ├── inbox/          ← brain_write lands here (uncompiled)
 ├── processed/      ← moved here after compile
 ├── wiki/
@@ -113,7 +119,8 @@ vault/
 │   ├── people/     ← one page per person
 │   ├── projects/   ← active/past projects
 │   ├── areas/      ← ongoing responsibilities
-│   └── brainstorm/ ← speculative ideas (prefix: "Idea: ")
+│   ├── brainstorm/ ← speculative ideas (prefix: "Idea: ")
+│   └── learning/   ← course/book/practice material
 └── sources/        ← raw imports
 ```
 

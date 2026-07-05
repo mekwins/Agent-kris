@@ -1,5 +1,6 @@
 from src.search import semantic_search, keyword_search, hybrid_search
 from src.config import DEFAULT_SEARCH_LIMIT
+from src.vaults import get_vault
 
 
 async def run(
@@ -7,9 +8,14 @@ async def run(
     scope: str = "all",
     limit: int = DEFAULT_SEARCH_LIMIT,
     mode: str = "hybrid",
+    wiki: str | None = None,
 ) -> dict:
+    vault = get_vault(wiki)
     if mode == "keyword":
-        return keyword_search(query, scope=scope, limit=limit)
-    if mode == "semantic":
-        return await semantic_search(query, scope=scope, limit=limit)
-    return await hybrid_search(query, scope=scope, limit=limit)
+        result = keyword_search(vault, query, scope=scope, limit=limit)
+    elif mode == "semantic":
+        result = await semantic_search(vault, query, scope=scope, limit=limit)
+    else:
+        result = await hybrid_search(vault, query, scope=scope, limit=limit)
+    result["wiki"] = vault.id
+    return result

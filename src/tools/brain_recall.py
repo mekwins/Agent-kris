@@ -1,22 +1,24 @@
-from src import vault
+from src import vault as vault_ops
+from src.vaults import get_vault
 
 
-async def run(topic: str, depth: int = 1) -> dict:
-    rel_path = vault.find_page_by_topic(topic)
+async def run(topic: str, depth: int = 1, wiki: str | None = None) -> dict:
+    vault = get_vault(wiki)
+    rel_path = vault_ops.find_page_by_topic(vault, topic)
     if not rel_path:
-        return {"error": f"No wiki page found for topic: {topic}"}
+        return {"error": f"No wiki page found for topic: {topic}", "wiki": vault.id}
 
-    page = vault.read_page(rel_path)
+    page = vault_ops.read_page(vault, rel_path)
     if not page:
-        return {"error": f"Could not read page: {rel_path}"}
+        return {"error": f"Could not read page: {rel_path}", "wiki": vault.id}
 
     related = []
     linked_slugs = set(page["wikilinks"])
 
     for link_title in linked_slugs:
-        link_path = vault.find_page_by_topic(link_title)
+        link_path = vault_ops.find_page_by_topic(vault, link_title)
         if link_path:
-            linked_page = vault.read_page(link_path)
+            linked_page = vault_ops.read_page(vault, link_path)
             if linked_page:
                 related.append(linked_page)
 
@@ -27,10 +29,10 @@ async def run(topic: str, depth: int = 1) -> dict:
                 if wl not in linked_slugs:
                     depth2_slugs.add(wl)
         for link_title in depth2_slugs:
-            link_path = vault.find_page_by_topic(link_title)
+            link_path = vault_ops.find_page_by_topic(vault, link_title)
             if link_path:
-                linked_page = vault.read_page(link_path)
+                linked_page = vault_ops.read_page(vault, link_path)
                 if linked_page:
                     related.append(linked_page)
 
-    return {"page": page, "related": related}
+    return {"wiki": vault.id, "page": page, "related": related}

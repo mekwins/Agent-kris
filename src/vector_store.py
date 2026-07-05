@@ -1,27 +1,30 @@
-"""Local JSON-backed vector store with cosine similarity search."""
+"""Per-vault JSON-backed vector store with cosine similarity search.
+
+Each vault owns its own `.vectors.json`, so embeddings never cross vaults.
+"""
 
 from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from src.config import VECTORS_PATH, MAX_CHUNK_WORDS
+from src.config import MAX_CHUNK_WORDS
+from src.vaults import Vault
 
 
-def _load() -> dict[str, Any]:
-    if not VECTORS_PATH.exists():
+def _load(vault: Vault) -> dict[str, Any]:
+    if not vault.vectors_path.exists():
         return {"chunks": []}
-    with open(VECTORS_PATH, encoding="utf-8") as f:
+    with open(vault.vectors_path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def _save(store: dict[str, Any]) -> None:
-    VECTORS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(VECTORS_PATH, "w", encoding="utf-8") as f:
+def _save(vault: Vault, store: dict[str, Any]) -> None:
+    vault.vectors_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(vault.vectors_path, "w", encoding="utf-8") as f:
         json.dump(store, f, ensure_ascii=False)
 
 
@@ -56,22 +59,23 @@ def chunk_content(content: str, page_slug: str, tags: list[str], domain: str) ->
     ]
 
 
-def upsert(page_slug: str, chunks: list[dict[str, Any]], embeddings: list[list[float]]) -> None:
+def upsert(vault: Vault, page_slug: str, chunks: list[dict[str, Any]], embeddings: list[list[float]]) -> None:
     """Replace all chunks for a page, then add new ones."""
-    store = _load()
+    store = _load(vault)
     store["chunks"] = [c for c in store["chunks"] if c["page_slug"] != page_slug]
     for chunk, embedding in zip(chunks, embeddings):
         store["chunks"].append({**chunk, "embedding": embedding})
-    _save(store)
+    _save(vault, store)
 
 
 def search(
+    vault: Vault,
     query_embedding: list[float],
     scope: str = "all",
     limit: int = 10,
 ) -> list[dict[str, Any]]:
     """Return top-k chunks sorted by cosine similarity."""
-    store = _load()
+    store = _load(vault)
     candidates = store["chunks"]
     if scope != "all":
         candidates = [c for c in candidates if c.get("domain") == scope]
@@ -90,7 +94,7 @@ def search(
     return scored[:limit]
 
 
-def remove_page(page_slug: str) -> None:
-    store = _load()
+def remove_page(vault: Vault, page_slug: str) -> None:
+    store = _load(vault)
     store["chunks"] = [c for c in store["chunks"] if c["page_slug"] != page_slug]
-    _save(store)
+    _save(vault, store)

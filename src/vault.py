@@ -1,24 +1,26 @@
-"""Local filesystem operations for the vault."""
+"""Local filesystem operations for a vault.
+
+Every function takes a `Vault` so the same engine serves any number of vaults.
+"""
 
 from __future__ import annotations
 
 import re
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 import frontmatter
 
-from src.config import VAULT_PATH
+from src.vaults import Vault
 
 
 def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9-]", "-", text.lower().strip()).strip("-")
 
 
-def read_page(rel_path: str) -> dict[str, Any] | None:
-    """Read a markdown file and return its frontmatter + content."""
-    path = VAULT_PATH / rel_path
+def read_page(vault: Vault, rel_path: str) -> dict[str, Any] | None:
+    """Read a markdown file (relative to the vault root) + its frontmatter."""
+    path = vault.path / rel_path
     if not path.exists():
         return None
     post = frontmatter.load(str(path))
@@ -34,17 +36,18 @@ def read_page(rel_path: str) -> dict[str, Any] | None:
 
 
 def write_inbox(
+    vault: Vault,
     content: str,
     tags: list[str],
     domain: str,
     title: str | None = None,
     source_url: str | None = None,
 ) -> str:
-    """Write a new file to vault/inbox/ with proper frontmatter. Returns relative path."""
+    """Write a new file to <vault>/inbox/ with frontmatter. Returns relative path."""
     today = date.today().isoformat()
     slug = _slugify(title or f"note-{today}")
     filename = f"{today}-{slug}.md"
-    inbox_dir = VAULT_PATH / "inbox"
+    inbox_dir = vault.inbox_dir
     inbox_dir.mkdir(parents=True, exist_ok=True)
 
     metadata: dict[str, Any] = {
@@ -63,14 +66,14 @@ def write_inbox(
     return f"inbox/{filename}"
 
 
-def find_page_by_topic(topic: str) -> str | None:
+def find_page_by_topic(vault: Vault, topic: str) -> str | None:
     """Find a wiki page path by slug or title (case-insensitive)."""
-    wiki_dir = VAULT_PATH / "wiki"
+    wiki_dir = vault.wiki_dir
     if not wiki_dir.exists():
         return None
     normalized = _slugify(topic)
     for md_file in wiki_dir.rglob("*.md"):
-        rel = md_file.relative_to(VAULT_PATH)
+        rel = md_file.relative_to(vault.path)
         if _slugify(md_file.stem) == normalized:
             return str(rel)
         post = frontmatter.load(str(md_file))
@@ -79,22 +82,22 @@ def find_page_by_topic(topic: str) -> str | None:
     return None
 
 
-def list_pages(domain: str | None = None) -> list[dict[str, Any]]:
+def list_pages(vault: Vault, domain: str | None = None) -> list[dict[str, Any]]:
     """List all wiki pages, optionally filtered by domain."""
-    wiki_dir = VAULT_PATH / "wiki"
+    wiki_dir = vault.wiki_dir
     if not wiki_dir.exists():
         return []
     pages = []
     for md_file in wiki_dir.rglob("*.md"):
-        page = read_page(str(md_file.relative_to(VAULT_PATH)))
+        page = read_page(vault, str(md_file.relative_to(vault.path)))
         if page and (domain is None or page["domain"] == domain):
             pages.append(page)
     return pages
 
 
-def keyword_search(query: str, scope: str = "all", limit: int = 10) -> list[dict[str, Any]]:
-    """Full-text search across all vault markdown files. Returns chunk-shaped dicts."""
-    search_dirs = [VAULT_PATH / "wiki", VAULT_PATH / "sources", VAULT_PATH / "inbox"]
+def keyword_search(vault: Vault, query: str, scope: str = "all", limit: int = 10) -> list[dict[str, Any]]:
+    """Full-text search across the vault's markdown. Returns chunk-shaped dicts."""
+    search_dirs = [vault.path / "wiki", vault.path / "sources", vault.path / "inbox"]
     pattern = re.compile(re.escape(query), re.IGNORECASE)
     results: list[dict[str, Any]] = []
 
@@ -102,13 +105,12 @@ def keyword_search(query: str, scope: str = "all", limit: int = 10) -> list[dict
         if not search_dir.exists():
             continue
         for md_file in search_dir.rglob("*.md"):
-            page = read_page(str(md_file.relative_to(VAULT_PATH)))
+            page = read_page(vault, str(md_file.relative_to(vault.path)))
             if not page:
                 continue
             if scope != "all" and page["domain"] != scope:
                 continue
 
-            # Find all matches and extract a snippet around each
             seen_snippets: set[str] = set()
             for match in pattern.finditer(page["content"]):
                 start = max(0, match.start() - 120)

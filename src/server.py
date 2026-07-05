@@ -5,18 +5,27 @@ from __future__ import annotations
 import anyio
 import argparse
 import json
+import os
 from typing import Literal
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from starlette.responses import Response
 
-from src.tools import brain_search, brain_recall, brain_write, brain_context, brain_relate, brain_clip
+from src.tools import (
+    brain_search, brain_recall, brain_write, brain_context,
+    brain_relate, brain_clip, brain_list_wikis,
+)
 from src import agent as brain_agent
 from src.config import MCP_API_KEY
 
-HOST = "127.0.0.1"
-PORT = 8765
+# Every tool takes an optional `wiki` id. Vaults are dynamic (from wikis.toml),
+# so the param is a free string — call brain_list_wikis to discover valid ids.
+
+# Bind address is env-configurable so the same image runs locally (127.0.0.1)
+# and on a host like fly.io (HOST=0.0.0.0, PORT injected by the platform).
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", "8765"))
 
 mcp = FastMCP("brain-mcp", host=HOST, port=PORT)
 
@@ -47,14 +56,22 @@ class APIKeyMiddleware:
 
 
 @mcp.tool()
+async def brain_list_wikis_tool() -> str:
+    """List all available vaults (wikis) with their descriptions, domains, and note types. Call this first to know which `wiki` to pass to the other tools."""
+    result = await brain_list_wikis.run()
+    return json.dumps(result, indent=2, default=str)
+
+
+@mcp.tool()
 async def brain_search_tool(
     query: str,
-    scope: Literal["work", "personal", "learning", "all"] = "all",
+    scope: str = "all",
     limit: int = 10,
     mode: Literal["hybrid", "semantic", "keyword"] = "hybrid",
+    wiki: str | None = None,
 ) -> str:
-    """Search wiki and source content. mode=hybrid (default) combines semantic + keyword; keyword does exact text match only; semantic does vector search only."""
-    result = await brain_search.run(query, scope=scope, limit=limit, mode=mode)
+    """Search wiki and source content within a vault. mode=hybrid (default) combines semantic + keyword; keyword does exact text match only; semantic does vector search only. `scope` optionally filters by a domain string; use brain_list_wikis to see a vault's domains."""
+    result = await brain_search.run(query, scope=scope, limit=limit, mode=mode, wiki=wiki)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -62,9 +79,10 @@ async def brain_search_tool(
 async def brain_recall_tool(
     topic: str,
     depth: Literal[1, 2] = 1,
+    wiki: str | None = None,
 ) -> str:
-    """Fetch a specific wiki page and its linked neighbors."""
-    result = await brain_recall.run(topic, depth=depth)
+    """Fetch a specific wiki page and its linked neighbors from a vault."""
+    result = await brain_recall.run(topic, depth=depth, wiki=wiki)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -72,21 +90,23 @@ async def brain_recall_tool(
 async def brain_write_tool(
     content: str,
     tags: list[str],
-    domain: Literal["work", "personal", "learning"],
+    domain: str,
     title: str | None = None,
     source_url: str | None = None,
+    wiki: str | None = None,
 ) -> str:
-    """Write new content to the inbox and index it for search."""
-    result = await brain_write.run(content, tags, domain, title=title, source_url=source_url)
+    """Write new content to a vault's inbox and index it for search."""
+    result = await brain_write.run(content, tags, domain, title=title, source_url=source_url, wiki=wiki)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool()
 async def brain_context_tool(
-    agent_type: Literal["work", "personal", "research"],
+    agent_type: str | None = None,
+    wiki: str | None = None,
 ) -> str:
-    """Return a pre-filtered context bundle for a specific agent persona."""
-    result = await brain_context.run(agent_type)
+    """Return a recent-page context bundle for a vault. `agent_type` optionally filters by a domain string within that vault."""
+    result = await brain_context.run(agent_type, wiki=wiki)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -94,20 +114,22 @@ async def brain_context_tool(
 async def brain_relate_tool(
     concept_a: str,
     concept_b: str,
+    wiki: str | None = None,
 ) -> str:
-    """Find the connection path and shared tags between two wiki concepts."""
-    result = await brain_relate.run(concept_a, concept_b)
+    """Find the connection path and shared tags between two wiki concepts in a vault."""
+    result = await brain_relate.run(concept_a, concept_b, wiki=wiki)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool()
 async def brain_clip_tool(
     url: str,
-    domain: Literal["work", "personal", "learning"] = "learning",
+    domain: str = "learning",
     tags: list[str] | None = None,
+    wiki: str | None = None,
 ) -> str:
-    """Clip a web page to the inbox. Fetches the URL, extracts the article as markdown, downloads images to vault/assets/. Compile afterwards to add it to the wiki."""
-    result = await brain_clip.run(url, domain=domain, tags=tags or ["article"])
+    """Clip a web page to a vault's inbox. Fetches the URL, extracts the article as markdown, downloads images to <vault>/assets/. Compile afterwards to add it to the wiki."""
+    result = await brain_clip.run(url, domain=domain, tags=tags or ["article"], wiki=wiki)
     return json.dumps(result, indent=2)
 
 
@@ -116,13 +138,15 @@ async def brain_compile_tool(
     task: Literal["compile inbox", "compile sources", "lint", "search"] = "compile inbox",
     limit: int | None = None,
     query: str | None = None,
+    wiki: str | None = None,
 ) -> str:
     """
-    Run the brain compilation agent.
+    Run the brain compilation agent against a vault.
     - task='compile inbox': process all unread inbox files → wiki pages
     - task='compile sources': recompile from sources/ after connector sync
     - task='lint': check broken wikilinks, orphan pages, frontmatter
     - task='search' + query='...': synthesize a cited answer from wiki
+    Pass `wiki` to select the vault (see brain_list_wikis).
     """
     if task == "search":
         if not query:
@@ -132,7 +156,7 @@ async def brain_compile_tool(
         full_task = f"{task} limit={limit}"
     else:
         full_task = task
-    result = await brain_agent.run(full_task)
+    result = await brain_agent.run(full_task, wiki=wiki)
     return result
 
 

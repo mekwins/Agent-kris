@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 import trafilatura
 
-from src.config import VAULT_PATH
+from src.vaults import get_vault
 
 _SLUG_RE = re.compile(r"[^\w\s-]")
 _SPACES_RE = re.compile(r"[\s_]+")
@@ -40,8 +40,10 @@ async def run(
     url: str,
     domain: str = "learning",
     tags: list[str] | None = None,
+    wiki: str | None = None,
 ) -> dict[str, Any]:
     tags = tags or ["article"]
+    vault = get_vault(wiki)
 
     # Fetch raw HTML
     try:
@@ -70,7 +72,7 @@ async def run(
 
     # Rewrite image URLs → local paths and collect downloads
     assets_rel = f"assets/{slug}"
-    assets_dir = VAULT_PATH / assets_rel
+    assets_dir = vault.path / assets_rel
     pending: list[tuple[str, Path]] = []
 
     def _rewrite(m: re.Match) -> str:
@@ -105,11 +107,12 @@ async def run(
     )
 
     filename = f"{today}-{slug}.md"
-    inbox_path = VAULT_PATH / "inbox" / filename
+    inbox_path = vault.inbox_dir / filename
     inbox_path.parent.mkdir(parents=True, exist_ok=True)
     inbox_path.write_text(body, encoding="utf-8")
 
     return {
+        "wiki": vault.id,
         "clipped": f"inbox/{filename}",
         "title": title,
         "domain": domain,
@@ -117,5 +120,5 @@ async def run(
         "words": len(content_local.split()),
         "images_downloaded": images_ok,
         "images_total": len(pending),
-        "assets_dir": f"vault/{assets_rel}" if pending else None,
+        "assets_dir": f"{vault.id}/{assets_rel}" if pending else None,
     }

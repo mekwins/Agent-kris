@@ -24,5 +24,8 @@ INTC India lead responsible for sourcing Kafka specialists to staff Pod 1 (Event
 ## Related Concepts
 - [[Event-Driven Architecture]] — core competency of Pod 1 team he sources for
 
+## Assigned Tasks
+- [[Follow Up with Ravi Ganda on Kafka Pod 1]] — owes a sourcing update on Kafka / Pod 1
+
 ## Sources
 - [[IT 2.0 Modern Technical Architecture — Capability Pods]]

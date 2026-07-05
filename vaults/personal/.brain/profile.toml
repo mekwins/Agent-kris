@@ -1,0 +1,14 @@
+description = "Private life and discovery: personal profile, health, family, philosophy, books, and things I want to learn or reflect on. Kept separate from work for privacy."
+domains = ["concepts", "people", "areas", "brainstorm", "learning"]
+
+[types.note]
+frontmatter = ["title", "tags"]
+hint = "General personal note or reflection. Default type."
+
+[types.person]
+frontmatter = ["title", "tags"]
+hint = "People in personal life — family, friends. Keep private."
+
+[types.reflection]
+frontmatter = ["title", "date", "tags"]
+hint = "Philosophy/life reflections and discovery notes. Link to related concepts and books."

@@ -1,20 +1,22 @@
-from src import vault
+from src import vault as vault_ops
+from src.vaults import get_vault
 
 
-async def run(concept_a: str, concept_b: str) -> dict:
-    path_a = vault.find_page_by_topic(concept_a)
-    path_b = vault.find_page_by_topic(concept_b)
+async def run(concept_a: str, concept_b: str, wiki: str | None = None) -> dict:
+    vault = get_vault(wiki)
+    path_a = vault_ops.find_page_by_topic(vault, concept_a)
+    path_b = vault_ops.find_page_by_topic(vault, concept_b)
 
     if not path_a:
-        return {"error": f"No page found for: {concept_a}"}
+        return {"error": f"No page found for: {concept_a}", "wiki": vault.id}
     if not path_b:
-        return {"error": f"No page found for: {concept_b}"}
+        return {"error": f"No page found for: {concept_b}", "wiki": vault.id}
 
-    page_a = vault.read_page(path_a)
-    page_b = vault.read_page(path_b)
+    page_a = vault_ops.read_page(vault, path_a)
+    page_b = vault_ops.read_page(vault, path_b)
 
     if not page_a or not page_b:
-        return {"error": "Could not read one or both pages"}
+        return {"error": "Could not read one or both pages", "wiki": vault.id}
 
     tags_a = set(page_a["tags"])
     tags_b = set(page_b["tags"])
@@ -31,14 +33,15 @@ async def run(concept_a: str, concept_b: str) -> dict:
     else:
         # Check for a shared intermediate page (1-hop bridge)
         for link in links_a:
-            bridge_path = vault.find_page_by_topic(link)
+            bridge_path = vault_ops.find_page_by_topic(vault, link)
             if bridge_path:
-                bridge = vault.read_page(bridge_path)
+                bridge = vault_ops.read_page(vault, bridge_path)
                 if bridge and (page_b["title"] in bridge["wikilinks"] or concept_b in bridge["wikilinks"]):
                     path = [page_a["title"], bridge["title"], page_b["title"]]
                     break
 
     return {
+        "wiki": vault.id,
         "concept_a": page_a["title"],
         "concept_b": page_b["title"],
         "shared_tags": shared_tags,

@@ -7,6 +7,7 @@
 | `wiki/concepts/` | Reusable, domain-agnostic knowledge (MCP, agents, patterns) |
 | `wiki/areas/` | An ongoing responsibility with no fixed end (e.g. AI Strategy) |
 | `wiki/brainstorm/` | A speculative/unvalidated idea (prefix title with "Idea: ") |
+| `wiki/tasks/` | An actionable task/to-do; always set an assignee and link the [[person]] + related [[project]] |
 
 ## Rules
 - Every project note links to its `wiki/projects/` page and to any `[[people]]` mentioned.

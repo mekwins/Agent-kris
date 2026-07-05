@@ -22,8 +22,11 @@ ANTHROPIC_FOUNDRY_API_KEY: str = _require("ANTHROPIC_FOUNDRY_API_KEY")
 # Optional API key — if set, the MCP HTTP server requires x-api-key header
 MCP_API_KEY: str | None = os.getenv("MCP_API_KEY") or None
 
-VAULT_PATH: Path = Path(os.getenv("VAULT_PATH", "./vault")).resolve()
-VECTORS_PATH: Path = Path(os.getenv("VECTORS_PATH", "./vault/.vectors.json")).resolve()
+# --- Multi-vault configuration ---------------------------------------------
+# Each vault is a directory under VAULTS_ROOT; the registry file lists them.
+VAULTS_ROOT: Path = Path(os.getenv("VAULTS_ROOT", "./vaults")).resolve()
+WIKIS_CONFIG: Path = Path(os.getenv("WIKIS_CONFIG", "./wikis.toml")).resolve()
+DEFAULT_WIKI: str = os.getenv("DEFAULT_WIKI", "work")
 
 EMBEDDING_DIMENSIONS = 1536
 DEFAULT_SEARCH_LIMIT = 10

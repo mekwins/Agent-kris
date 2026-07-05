@@ -12,3 +12,7 @@ hint = "One page per project with goals, status and the people involved. Cross-l
 [types.concept]
 frontmatter = ["title", "tags"]
 hint = "Settled, reusable knowledge (MCP, agents, architecture patterns). Keep domain-agnostic and link to the projects that use it."
+
+[types.task]
+frontmatter = ["title", "status", "assignee", "due", "related", "tags"]
+hint = "Actionable to-do. status: open|done. Resolve the assignee to an existing [[person]] or create a stub, link the related [[project]], and back-link the task from the person's Assigned Tasks section."

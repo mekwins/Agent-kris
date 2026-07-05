@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__/
+*.pyc
+.env
+.DS_Store
+dist/
+docs/
+*.md
+**/.vectors.json
+**/.obsidian/
+.claude/
+terminals/

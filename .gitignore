@@ -3,7 +3,9 @@ __pycache__/
 *.pyc
 .venv/
 dist/
-vault/.vectors.json
 .DS_Store
-vault/.obsidian/
 trnscript.md
+
+# Per-vault derived caches (rebuild with scripts/index_vault.py)
+**/.vectors.json
+**/.obsidian/

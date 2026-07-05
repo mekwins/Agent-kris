@@ -25,7 +25,6 @@ dependencies = [
 [project.scripts]
 brain-mcp = "src.server:main"
 brain-index = "scripts.index_vault:main"
-brain-trigger = "trigger.app:main"
 
 [build-system]
 requires = ["hatchling"]

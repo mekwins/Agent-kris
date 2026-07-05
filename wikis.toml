@@ -1,0 +1,13 @@
+# Vault registry. Each vault is a directory under VAULTS_ROOT (default ./vaults)
+# with a self-describing `.brain/` profile. To add a vault: create the directory
+# + .brain/profile.toml, then add an entry here. Optionally set `path` to point
+# at a vault living outside VAULTS_ROOT (e.g. a separately-cloned git repo).
+
+default = "work"
+
+[wikis.work]
+# path = "/absolute/path/to/brain-work"   # optional override
+
+[wikis.spanish]
+
+[wikis.personal]
