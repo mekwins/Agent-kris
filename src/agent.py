@@ -17,11 +17,20 @@ Supported tasks:
 from __future__ import annotations
 
 import json
+import time
 from datetime import date
 from typing import Any
 
 import frontmatter as fm
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, APITimeoutError, APIConnectionError, APIStatusError
+
+_TIMING_LOG: list[dict[str, Any]] = []
+
+
+def _log_timing(label: str, started: float) -> None:
+    elapsed = time.time() - started
+    _TIMING_LOG.append({"label": label, "elapsed_s": round(elapsed, 3)})
+    print(f"[TIMING] {label}: {elapsed:.3f}s", flush=True)
 
 from src.config import ANTHROPIC_FOUNDRY_BASE_URL, ANTHROPIC_FOUNDRY_API_KEY
 from src import vault as vault_ops, vector_store, gitsync
@@ -30,6 +39,8 @@ from src.vaults import Vault, get_vault
 
 MODEL = "claude-sonnet-4-6"
 MAX_ITERATIONS = 50  # safety cap on the agentic loop
+MODEL_CALL_MAX_ATTEMPTS = 2  # our own retry on top of the SDK's internal retries,
+# for when a model call fails even after the SDK exhausts its own max_retries
 
 # Generic, vault-agnostic mechanics. The vault profile is appended after this.
 ENGINE_PROMPT = """You are a knowledge compiler for a personal second-brain vault stored on a local filesystem.
@@ -238,29 +249,81 @@ class BrainAgent:
             base_url=ANTHROPIC_FOUNDRY_BASE_URL,
             api_key=ANTHROPIC_FOUNDRY_API_KEY,
             default_headers={"api-key": ANTHROPIC_FOUNDRY_API_KEY},
+            # Azure Foundry shows high tail-latency variance on big multi-tool-call
+            # turns (observed normal range: 2-136s; one outlier: 632s — same type
+            # of request, huge unused rate-limit headroom both times, so not
+            # throttling, just an occasional slow/stuck backend instance). 150s
+            # comfortably covers the normal range (worst normal case seen: 136s)
+            # while still failing a genuinely stuck request far faster than the
+            # SDK's default 600s read timeout (which compounds to up to 30 min
+            # of dead air across 3 retries). On timeout the SDK's built-in retry
+            # fires automatically and typically lands on a fresh backend instance.
+            timeout=150.0,
+            max_retries=4,
         )
 
-    async def run(self, task: str) -> str:
-        """Run the agent with a task string. Returns a summary of what was done."""
+    async def run(self, task: str, inbox_limit: int | None = None) -> str:
+        """Run the agent with a task string. Returns a summary of what was done.
+
+        inbox_limit: if set, hard-caps how many inbox files list_vault_files("inbox")
+        will ever return in this run — enforced in code, not just mentioned in the
+        prompt (the model cannot "forget" to stop after N files).
+        """
+        self._inbox_limit = inbox_limit
         messages: list[dict[str, Any]] = [{"role": "user", "content": task}]
         iterations = 0
         system = _system_prompt(self.vault)
 
         while iterations < MAX_ITERATIONS:
             iterations += 1
-            response = await self.client.messages.create(
-                model=MODEL,
-                max_tokens=8096,
-                system=system,
-                tools=TOOLS,
-                messages=messages,
-            )
+            t_model = time.time()
+            # The SDK's own max_retries already retries on timeout/connection
+            # errors internally, but if ALL of those retries are exhausted it
+            # raises instead of returning — which used to kill the whole compile
+            # run (and everything processed so far, except what fix #1's
+            # incremental commits already saved). Wrap with our own bounded
+            # retry loop so a single stuck/slow Azure Foundry backend instance
+            # degrades to "this one iteration took longer" instead of crashing
+            # the entire multi-file compile.
+            response = None
+            last_err: Exception | None = None
+            for attempt in range(1, MODEL_CALL_MAX_ATTEMPTS + 1):
+                try:
+                    response = await self.client.messages.create(
+                        model=MODEL,
+                        max_tokens=8096,
+                        system=system,
+                        tools=TOOLS,
+                        messages=messages,
+                    )
+                    last_err = None
+                    break
+                except (APITimeoutError, APIConnectionError, APIStatusError) as err:
+                    last_err = err
+                    _log_timing(
+                        f"iter{iterations}: model.messages.create attempt {attempt}/{MODEL_CALL_MAX_ATTEMPTS} FAILED ({type(err).__name__})",
+                        t_model,
+                    )
+                    if attempt < MODEL_CALL_MAX_ATTEMPTS:
+                        t_model = time.time()
+            if response is None:
+                # Every attempt failed — stop this run cleanly. Anything already
+                # written + committed via mark_processed survives; only the
+                # file(s) mid-flight in this iteration are lost (they're still
+                # sitting in inbox/ with status: inbox, so the next run retries
+                # them from scratch rather than silently skipping them).
+                raise RuntimeError(
+                    f"Model call failed after {MODEL_CALL_MAX_ATTEMPTS} attempts at iteration {iterations}: {last_err}"
+                ) from last_err
+            _log_timing(f"iter{iterations}: model.messages.create (stop={response.stop_reason})", t_model)
 
             if response.stop_reason == "end_turn":
                 return self._extract_text(response)
 
             if response.stop_reason == "tool_use":
+                t_tools = time.time()
                 tool_results = await self._handle_tool_calls(response)
+                _log_timing(f"iter{iterations}: tool execution (all calls)", t_tools)
                 messages.append({"role": "assistant", "content": response.content})
                 messages.append({"role": "user", "content": tool_results})
             else:
@@ -282,21 +345,24 @@ class BrainAgent:
         return results
 
     async def _execute_tool(self, name: str, inputs: dict[str, Any]) -> Any:
+        t0 = time.time()
         match name:
             case "list_vault_files":
-                return self._list_vault_files(inputs["directory"])
+                result = self._list_vault_files(inputs["directory"])
             case "read_vault_file":
-                return self._read_vault_file(inputs["path"])
+                result = self._read_vault_file(inputs["path"])
             case "write_vault_file":
-                return self._write_vault_file(inputs["path"], inputs["content"])
+                result = self._write_vault_file(inputs["path"], inputs["content"])
             case "mark_processed":
-                return self._mark_processed(inputs["path"])
+                result = self._mark_processed(inputs["path"])
             case "search_wiki":
-                return self._search_wiki(inputs["query"], inputs.get("limit", 5))
+                result = self._search_wiki(inputs["query"], inputs.get("limit", 5))
             case "embed_wiki_page":
-                return await self._embed_wiki_page(inputs["path"])
+                result = await self._embed_wiki_page(inputs["path"])
             case _:
-                return {"error": f"Unknown tool: {name}"}
+                result = {"error": f"Unknown tool: {name}"}
+        _log_timing(f"  tool={name} path/query={inputs.get('path') or inputs.get('query') or inputs.get('directory')}", t0)
+        return result
 
     # --- tool implementations (all scoped to self.vault) -------------------
 
@@ -317,6 +383,11 @@ class BrainAgent:
                     "status": page.get("status", ""),
                     "updated_at": page["updated_at"],
                 })
+        # Hard cap for inbox listings when inbox_limit was set on run() — enforced
+        # here in code so the model can't blow past it mid-compile.
+        limit = getattr(self, "_inbox_limit", None)
+        if limit is not None and directory.rstrip("/") == "inbox":
+            results = results[:limit]
         return results
 
     def _read_vault_file(self, path: str) -> str:
@@ -344,7 +415,20 @@ class BrainAgent:
         dest_path = dest_dir / file_path.name
         dest_path.write_text(fm.dumps(post), encoding="utf-8")
         file_path.unlink()
-        return {"moved_to_processed": str(dest_path.relative_to(self.vault.path))}
+        result = {"moved_to_processed": str(dest_path.relative_to(self.vault.path))}
+
+        # Incremental commit right away — so if the agent later times out or
+        # hits max_tokens mid-run, every file fully processed BEFORE that point
+        # is already safely committed (and pushed, best-effort) instead of
+        # being lost because the only commit was scheduled for end-of-run.
+        t_commit = time.time()
+        commit_hash = gitsync.commit_and_push(
+            self.vault, f"brain[{self.vault.id}]: compile {path} [{date.today().isoformat()}]"
+        )
+        _log_timing(f"  incremental commit for {path} (hash={commit_hash})", t_commit)
+        if commit_hash:
+            result["committed"] = commit_hash
+        return result
 
     def _search_wiki(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         results = vault_ops.keyword_search(self.vault, query, scope="all", limit=limit)
@@ -380,22 +464,33 @@ class BrainAgent:
 _COMPILE_TASKS = {"compile inbox", "compile sources"}
 
 
-async def run(task: str, wiki: str | None = None) -> str:
+async def run(task: str, wiki: str | None = None, inbox_limit: int | None = None) -> str:
     """Module-level entry point. Runs `task` against the given (or default) vault.
 
     For compile tasks we pull the vault repo first (so we build on the latest
     content from other clones), then commit + push afterwards (so the results
     reach GitHub and every other clone). Both are best-effort.
+
+    inbox_limit: hard cap (enforced in code) on how many inbox files a single
+    "compile inbox" run will touch — see BrainAgent._list_vault_files.
     """
     vault = get_vault(wiki)
     base_task = task.split(" limit=")[0].strip()
     is_compile = base_task in _COMPILE_TASKS
 
+    # Back-compat: still accept "compile inbox limit=N" textual form, but also
+    # honor an explicit inbox_limit kwarg (the real, code-enforced path).
+    if inbox_limit is None and " limit=" in task:
+        try:
+            inbox_limit = int(task.split(" limit=")[1].strip())
+        except (ValueError, IndexError):
+            inbox_limit = None
+
     if is_compile:
         gitsync.pull(vault)
 
     agent = BrainAgent(vault)
-    result = await agent.run(task)
+    result = await agent.run(task, inbox_limit=inbox_limit)
 
     if is_compile:
         msg = f"brain[{vault.id}]: {base_task} [{date.today().isoformat()}]"
@@ -404,5 +499,10 @@ async def run(task: str, wiki: str | None = None) -> str:
             result += (
                 f"\n\n---\nVault '{vault.id}' changes committed and pushed ({commit_hash})."
             )
+
+    if _TIMING_LOG:
+        total = sum(t["elapsed_s"] for t in _TIMING_LOG)
+        result += f"\n\n---\nTIMING ({len(_TIMING_LOG)} steps, {total:.1f}s total):\n"
+        result += "\n".join(f"  {t['label']}: {t['elapsed_s']}s" for t in _TIMING_LOG)
 
     return result

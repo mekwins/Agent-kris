@@ -156,7 +156,7 @@ async def brain_compile_tool(
         full_task = f"{task} limit={limit}"
     else:
         full_task = task
-    result = await brain_agent.run(full_task, wiki=wiki)
+    result = await brain_agent.run(full_task, wiki=wiki, inbox_limit=limit)
     return result
 
 
