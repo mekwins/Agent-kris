@@ -112,7 +112,16 @@ def _save(vault: Vault, store: dict[str, Any]) -> None:
         f"{vault.vectors_path.suffix}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"
     )
     with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(store, f, ensure_ascii=False)
+        # default=str: some vault pages have an unquoted date-like frontmatter
+        # tag (e.g. `tags: [..., 2026-10-06, ...]`) that YAML parses as a real
+        # datetime.date object rather than a string. Without default=str that
+        # crashes json.dump with "Object of type date is not JSON
+        # serializable" — a real, separate, pre-existing bug that was hit
+        # live while rebuilding this vault's index. default=str makes this
+        # save robust to ANY non-JSON-native value (dates, Decimals, etc.)
+        # reaching this point, regardless of which frontmatter/code path let
+        # it through.
+        json.dump(store, f, ensure_ascii=False, default=str)
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp_path, vault.vectors_path)

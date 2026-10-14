@@ -24,11 +24,23 @@ def read_page(vault: Vault, rel_path: str) -> dict[str, Any] | None:
     if not path.exists():
         return None
     post = frontmatter.load(str(path))
+    domain = post.get("domain", "")
+    tags = post.get("tags", [])
+    if not isinstance(tags, list):
+        tags = [tags] if tags else []
     return {
         "slug": rel_path.removesuffix(".md"),
         "title": post.get("title", path.stem),
-        "domain": post.get("domain", ""),
-        "tags": post.get("tags", []),
+        # Frontmatter is YAML, and an unquoted date-like scalar (e.g. a tag
+        # written as `2026-10-06` instead of `"2026-10-06"`) is parsed by
+        # PyYAML as a real datetime.date object, not a string. That object
+        # then flows into every downstream consumer of domain/tags
+        # (vector_store embeddings, JSON tool responses, etc.) and crashes
+        # json.dump() with "Object of type date is not JSON serializable"
+        # wherever it's first serialized. Stringify both at the single
+        # source (here) rather than special-casing every consumer.
+        "domain": str(domain) if domain else "",
+        "tags": [str(t) for t in tags],
         "content": post.content,
         "wikilinks": extract_wikilinks(post.content),
         "updated_at": str(post.get("date", "")),
