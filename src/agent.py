@@ -24,14 +24,6 @@ from typing import Any
 import frontmatter as fm
 from anthropic import AsyncAnthropic, APITimeoutError, APIConnectionError, APIStatusError
 
-_TIMING_LOG: list[dict[str, Any]] = []
-
-
-def _log_timing(label: str, started: float) -> None:
-    elapsed = time.time() - started
-    _TIMING_LOG.append({"label": label, "elapsed_s": round(elapsed, 3)})
-    print(f"[TIMING] {label}: {elapsed:.3f}s", flush=True)
-
 from src.config import ANTHROPIC_FOUNDRY_BASE_URL, ANTHROPIC_FOUNDRY_API_KEY
 from src import vault as vault_ops, vector_store, gitsync
 from src import embed as embedder
@@ -245,6 +237,12 @@ TOOLS: list[dict[str, Any]] = [
 class BrainAgent:
     def __init__(self, vault: Vault) -> None:
         self.vault = vault
+        # Per-run timing log — instance-scoped (not a module global) so it never
+        # accumulates across requests/process-uptime. A module-level global here
+        # previously caused every tool response to re-dump the ENTIRE timing
+        # history since the last process restart, growing unbounded across
+        # hourly cron compiles until it broke the JSON response transport.
+        self._timing_log: list[dict[str, Any]] = []
         self.client = AsyncAnthropic(
             base_url=ANTHROPIC_FOUNDRY_BASE_URL,
             api_key=ANTHROPIC_FOUNDRY_API_KEY,
@@ -261,6 +259,11 @@ class BrainAgent:
             timeout=150.0,
             max_retries=4,
         )
+
+    def _log_timing(self, label: str, started: float) -> None:
+        elapsed = time.time() - started
+        self._timing_log.append({"label": label, "elapsed_s": round(elapsed, 3)})
+        print(f"[TIMING] {label}: {elapsed:.3f}s", flush=True)
 
     async def run(self, task: str, inbox_limit: int | None = None) -> str:
         """Run the agent with a task string. Returns a summary of what was done.
@@ -300,7 +303,7 @@ class BrainAgent:
                     break
                 except (APITimeoutError, APIConnectionError, APIStatusError) as err:
                     last_err = err
-                    _log_timing(
+                    self._log_timing(
                         f"iter{iterations}: model.messages.create attempt {attempt}/{MODEL_CALL_MAX_ATTEMPTS} FAILED ({type(err).__name__})",
                         t_model,
                     )
@@ -315,7 +318,7 @@ class BrainAgent:
                 raise RuntimeError(
                     f"Model call failed after {MODEL_CALL_MAX_ATTEMPTS} attempts at iteration {iterations}: {last_err}"
                 ) from last_err
-            _log_timing(f"iter{iterations}: model.messages.create (stop={response.stop_reason})", t_model)
+            self._log_timing(f"iter{iterations}: model.messages.create (stop={response.stop_reason})", t_model)
 
             if response.stop_reason == "end_turn":
                 return self._extract_text(response)
@@ -323,7 +326,7 @@ class BrainAgent:
             if response.stop_reason == "tool_use":
                 t_tools = time.time()
                 tool_results = await self._handle_tool_calls(response)
-                _log_timing(f"iter{iterations}: tool execution (all calls)", t_tools)
+                self._log_timing(f"iter{iterations}: tool execution (all calls)", t_tools)
                 messages.append({"role": "assistant", "content": response.content})
                 messages.append({"role": "user", "content": tool_results})
             else:
@@ -361,7 +364,7 @@ class BrainAgent:
                 result = await self._embed_wiki_page(inputs["path"])
             case _:
                 result = {"error": f"Unknown tool: {name}"}
-        _log_timing(f"  tool={name} path/query={inputs.get('path') or inputs.get('query') or inputs.get('directory')}", t0)
+        self._log_timing(f"  tool={name} path/query={inputs.get('path') or inputs.get('query') or inputs.get('directory')}", t0)
         return result
 
     # --- tool implementations (all scoped to self.vault) -------------------
@@ -425,7 +428,7 @@ class BrainAgent:
         commit_hash = gitsync.commit_and_push(
             self.vault, f"brain[{self.vault.id}]: compile {path} [{date.today().isoformat()}]"
         )
-        _log_timing(f"  incremental commit for {path} (hash={commit_hash})", t_commit)
+        self._log_timing(f"  incremental commit for {path} (hash={commit_hash})", t_commit)
         if commit_hash:
             result["committed"] = commit_hash
         return result
@@ -500,9 +503,23 @@ async def run(task: str, wiki: str | None = None, inbox_limit: int | None = None
                 f"\n\n---\nVault '{vault.id}' changes committed and pushed ({commit_hash})."
             )
 
-    if _TIMING_LOG:
-        total = sum(t["elapsed_s"] for t in _TIMING_LOG)
-        result += f"\n\n---\nTIMING ({len(_TIMING_LOG)} steps, {total:.1f}s total):\n"
-        result += "\n".join(f"  {t['label']}: {t['elapsed_s']}s" for t in _TIMING_LOG)
+    if agent._timing_log:
+        total = sum(t["elapsed_s"] for t in agent._timing_log)
+        steps = agent._timing_log
+        # Defense-in-depth: a single large compile run can still log hundreds of
+        # steps. Report a summary (count, total, N slowest) instead of a full
+        # per-step dump, so one run's own timing section can never balloon the
+        # response — this plus the instance-scoped _timing_log (see __init__)
+        # together prevent the JSON-truncation bug this block used to cause.
+        slowest = sorted(steps, key=lambda t: t["elapsed_s"], reverse=True)[:10]
+        result += f"\n\n---\nTIMING ({len(steps)} steps, {total:.1f}s total). Slowest steps:\n"
+        result += "\n".join(f"  {t['label']}: {t['elapsed_s']}s" for t in slowest)
+
+    # Defense-in-depth hard cap on the whole response, independent of the cause
+    # of any future bloat — protects every tool's response, not just this one.
+    _MAX_RESULT_CHARS = 200_000
+    if len(result) > _MAX_RESULT_CHARS:
+        omitted = len(result) - _MAX_RESULT_CHARS
+        result = result[:_MAX_RESULT_CHARS] + f"\n\n---\n[...truncated, {omitted} more characters omitted...]"
 
     return result
