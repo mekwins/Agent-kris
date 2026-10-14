@@ -39,4 +39,14 @@ primary_region = "ord"   # Chicago — closest to Michigan/US-Central
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  # Bumped from 512mb -> 1024mb after a real production OOM: the 'work'
+  # vault's .vectors.json grew to ~92MB on disk (2930 chunks x 1536-dim
+  # embeddings, stored as plaintext JSON floats). _load() fully parses this
+  # into Python dicts + numpy arrays for every brain_search_tool call,
+  # ballooning well past 512MB and triggering a kernel OOM-kill of the
+  # whole VM (not just the process) mid-search. 1024mb gives headroom for
+  # the vault to keep growing before this becomes an issue again; the
+  # long-term fix is moving off an all-in-RAM JSON store (see brain_mcp
+  # technical analysis doc) to something that doesn't require loading the
+  # entire index per search.
+  memory = "1024mb"
