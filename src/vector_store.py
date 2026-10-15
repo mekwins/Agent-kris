@@ -1,206 +1,75 @@
-"""Per-vault JSON-backed vector store with cosine similarity search.
+"""Vector store — SQLite + sqlite-vec backend.
 
-Each vault owns its own `.vectors.json`, so embeddings never cross vaults.
+This module is now a thin compatibility shim over vector_store_sqlite,
+which replaced the original flat-JSON `.vectors.json` store. Every caller
+(search.py, agent.py, tools/brain_write.py, scripts/index_vault.py)
+imports `vector_store` by name, so re-exporting here means none of them
+needed to change — only the storage layer underneath did.
+
+See vector_store_sqlite.py's module docstring for the full rationale
+(production OOM at ~92MB/2930 chunks on a 512MB machine, hand-rolled
+fcntl locking needed for concurrent writers, corruption-on-interrupted-
+write risk — all eliminated by moving to a real embedded database).
+
+`_locked` and `_save` are re-exported too: scripts/index_vault.py calls
+them directly to do a single bulk atomic write instead of N individual
+upserts. For the SQLite backend, "locked" is a no-op context manager
+(SQLite's own file locking + WAL already serializes concurrent writers)
+and `_save` bulk-replaces the whole vec_chunks table in one transaction.
 """
 
 from __future__ import annotations
 
 import contextlib
-import fcntl
-import json
-import os
-import re
-import uuid
 from typing import Any, Iterator
 
-import numpy as np
-
-from src.config import MAX_CHUNK_WORDS
 from src.vaults import Vault
+from src import vector_store_sqlite as _sqlite_store
+
+chunk_content = _sqlite_store.chunk_content
+upsert = _sqlite_store.upsert
+search = _sqlite_store.search
+remove_page = _sqlite_store.remove_page
+count = _sqlite_store.count
+migrate_from_json = _sqlite_store.migrate_from_json
 
 
 @contextlib.contextmanager
 def _locked(vault: Vault) -> Iterator[None]:
-    """Cross-process exclusive lock around a read-modify-write cycle.
-
-    Two processes can legitimately touch the same vault's vectors file at
-    once — e.g. a live brain_compile_tool run (embedding newly-written wiki
-    pages one at a time) racing an operator-triggered `index_vault.py` full
-    rebuild. Without this lock, both processes read, modify, and os.replace()
-    independently; whichever one finishes last silently wins and the other's
-    writes are lost — or worse, both temp files can interleave on disk if
-    they happen to share a filename, corrupting the result even though each
-    individual _save() call is atomic on its own.
-
-    fcntl.flock() blocks until the lock is free, so this serializes the
-    upsert/remove_page read-modify-write cycle across every process touching
-    this vault, without needing any shared coordination beyond the filesystem.
+    """No-op for the SQLite backend — kept so scripts/index_vault.py's
+    `with vector_store._locked(vault):` call site doesn't need to change.
+    SQLite's own file-level locking (plus WAL mode) already serializes
+    concurrent writers to the same .vectors.sqlite3 file; the old
+    fcntl.flock()-based cross-process lock this replaced was only needed
+    because the JSON backend had no locking of its own.
     """
-    lock_path = vault.vectors_path.with_suffix(vault.vectors_path.suffix + ".lock")
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock_path, "w") as lock_file:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-
-
-def _load(vault: Vault) -> dict[str, Any]:
-    """Read the vectors file. Used by read-only callers (search()).
-
-    Degrades a corrupt/truncated file to an empty index (with a logged
-    warning) rather than raising — so a broken file turns semantic search
-    into "no results" instead of crashing every brain_search_tool call.
-    Safe here specifically because search() never writes anything back;
-    for read-modify-write callers see `_load_strict`.
-    """
-    if not vault.vectors_path.exists():
-        return {"chunks": []}
-    try:
-        with open(vault.vectors_path, encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError as exc:
-        print(
-            f"[vector_store] WARNING: {vault.vectors_path} is corrupt/truncated "
-            f"({exc}). Treating as empty index for this search — run "
-            f"scripts/index_vault.py to rebuild it.",
-            flush=True,
-        )
-        return {"chunks": []}
-
-
-def _load_strict(vault: Vault) -> dict[str, Any]:
-    """Read the vectors file for a read-modify-write cycle (upsert/remove_page).
-
-    Unlike `_load`, this RAISES on corruption instead of degrading to an
-    empty store. upsert()/remove_page() always write back what they read —
-    if a corrupt file were silently treated as empty here, every embed call
-    would quietly overwrite the (larger, still mostly-good) on-disk store
-    with just that one page's chunks, destroying the rest of the index one
-    upsert at a time. Failing loudly instead forces a real
-    `scripts/index_vault.py` rebuild rather than a slow silent data loss.
-    """
-    if not vault.vectors_path.exists():
-        return {"chunks": []}
-    with open(vault.vectors_path, encoding="utf-8") as f:
-        return json.load(f)
+    yield
 
 
 def _save(vault: Vault, store: dict[str, Any]) -> None:
-    """Atomically overwrite the vault's vector store.
+    """Bulk-replace the entire vector store in one transaction.
 
-    Writes to a per-process-unique temp file in the same directory, then
-    os.replace()s it over the real path. os.replace() is atomic on POSIX, so
-    a crash/kill/restart mid-write can never leave a half-written,
-    permanently-corrupt .vectors.json behind — readers only ever see the old
-    complete file or the new complete file, never a partial one.
-
-    The temp filename includes the pid + a random token so that even if this
-    is ever called without holding `_locked()` (defense-in-depth only —
-    callers should always hold the lock), two concurrent writers can't both
-    write through the *same* temp file path and interleave their output.
-
-    (Previously this opened vectors_path directly in "w" mode and wrote into
-    it in place — if the process died mid-json.dump(), the file was left
-    truncated forever, and every subsequent _load() would fail with the same
-    JSONDecodeError at the same byte offset until someone noticed and fully
-    reindexed the vault from scratch via scripts/index_vault.py.)
+    Used by scripts/index_vault.py's full-rebuild path: it chunks+embeds
+    every file in memory first, then calls this once with the complete new
+    chunk list, instead of one upsert() per file. Mirrors the old JSON
+    store's `_save(vault, {"chunks": [...]})` signature so that call site
+    needed no changes.
     """
-    vault.vectors_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = vault.vectors_path.with_suffix(
-        f"{vault.vectors_path.suffix}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"
+    conn = _sqlite_store._connect(
+        vault, dim=len(store["chunks"][0]["embedding"]) if store.get("chunks") else None
     )
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        # default=str: some vault pages have an unquoted date-like frontmatter
-        # tag (e.g. `tags: [..., 2026-10-06, ...]`) that YAML parses as a real
-        # datetime.date object rather than a string. Without default=str that
-        # crashes json.dump with "Object of type date is not JSON
-        # serializable" — a real, separate, pre-existing bug that was hit
-        # live while rebuilding this vault's index. default=str makes this
-        # save robust to ANY non-JSON-native value (dates, Decimals, etc.)
-        # reaching this point, regardless of which frontmatter/code path let
-        # it through.
-        json.dump(store, f, ensure_ascii=False, default=str)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_path, vault.vectors_path)
-
-
-def chunk_content(content: str, page_slug: str, tags: list[str], domain: str) -> list[dict[str, Any]]:
-    """Split page content into chunks on H2 headings, then by paragraph if too long."""
-    sections = re.split(r"^## ", content, flags=re.MULTILINE)
-    chunks = []
-    for section in sections:
-        if not section.strip():
-            continue
-        words = section.split()
-        if len(words) <= MAX_CHUNK_WORDS:
-            chunks.append({"text": section.strip(), "section": section.split("\n")[0].strip()})
-        else:
-            paragraphs = re.split(r"\n\n+", section)
-            current, current_words = [], 0
-            for para in paragraphs:
-                para_words = len(para.split())
-                if current_words + para_words > MAX_CHUNK_WORDS and current:
-                    chunks.append({"text": "\n\n".join(current).strip(), "section": ""})
-                    current, current_words = [para], para_words
-                else:
-                    current.append(para)
-                    current_words += para_words
-            if current:
-                chunks.append({"text": "\n\n".join(current).strip(), "section": ""})
-
-    return [
-        {"page_slug": page_slug, "content": c["text"], "section": c["section"], "tags": tags, "domain": domain}
-        for c in chunks
-        if c["text"]
-    ]
-
-
-def upsert(vault: Vault, page_slug: str, chunks: list[dict[str, Any]], embeddings: list[list[float]]) -> None:
-    """Replace all chunks for a page, then add new ones.
-
-    Holds the cross-process lock for the entire read-modify-write cycle so a
-    concurrent upsert/remove_page/rebuild for the same vault can't interleave
-    with this one and silently lose data (see `_locked`'s docstring).
-    """
-    with _locked(vault):
-        store = _load_strict(vault)
-        store["chunks"] = [c for c in store["chunks"] if c["page_slug"] != page_slug]
-        for chunk, embedding in zip(chunks, embeddings):
-            store["chunks"].append({**chunk, "embedding": embedding})
-        _save(vault, store)
-
-
-def search(
-    vault: Vault,
-    query_embedding: list[float],
-    scope: str = "all",
-    limit: int = 10,
-) -> list[dict[str, Any]]:
-    """Return top-k chunks sorted by cosine similarity."""
-    store = _load(vault)
-    candidates = store["chunks"]
-    if scope != "all":
-        candidates = [c for c in candidates if c.get("domain") == scope]
-
-    if not candidates:
-        return []
-
-    q = np.array(query_embedding)
-    scored = []
-    for chunk in candidates:
-        vec = np.array(chunk["embedding"])
-        score = float(np.dot(q, vec) / (np.linalg.norm(q) * np.linalg.norm(vec) + 1e-9))
-        scored.append({**{k: v for k, v in chunk.items() if k != "embedding"}, "score": score})
-
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    return scored[:limit]
-
-
-def remove_page(vault: Vault, page_slug: str) -> None:
-    with _locked(vault):
-        store = _load_strict(vault)
-        store["chunks"] = [c for c in store["chunks"] if c["page_slug"] != page_slug]
-        _save(vault, store)
+    with conn:
+        conn.execute("DELETE FROM vec_chunks")
+        for chunk in store.get("chunks", []):
+            conn.execute(
+                "INSERT INTO vec_chunks(embedding, domain, page_slug, section, content, tags) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    _sqlite_store._pack(chunk["embedding"]),
+                    chunk.get("domain", ""),
+                    chunk["page_slug"],
+                    chunk.get("section", ""),
+                    chunk.get("content", ""),
+                    ",".join(chunk.get("tags", [])),
+                ),
+            )

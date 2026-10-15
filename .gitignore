@@ -12,4 +12,7 @@ trnscript.md
 
 # Per-vault derived caches (rebuild with scripts/index_vault.py)
 **/.vectors.json
+**/.vectors.json.*
+**/.vectors.sqlite3
+**/.vectors.sqlite3-*
 **/.obsidian/

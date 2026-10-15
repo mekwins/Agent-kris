@@ -13,7 +13,7 @@ VAULTS_ROOT (default ./vaults/<id>). Each vault carries its own profile in a
     ├── processed/
     ├── wiki/
     ├── sources/
-    └── .vectors.json      # per-vault embedding store (gitignored)
+    └── .vectors.sqlite3  # per-vault embedding store (SQLite + sqlite-vec, gitignored)
 
 The engine code (vault.py, vector_store.py, search.py, agent.py) is generic and
 receives a `Vault` object; all per-vault behaviour lives in the profile, so a
@@ -74,6 +74,9 @@ class Vault:
 
     @property
     def vectors_path(self) -> Path:
+        """Legacy JSON vector store path — kept for migrate_from_json()'s
+        default source path. The live store is `.vectors.sqlite3` (see
+        vector_store_sqlite.py)."""
         return self.path / ".vectors.json"
 
     @property
