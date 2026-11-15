@@ -13,7 +13,11 @@ def _require(key: str) -> str:
 
 
 EMBEDDING_ENDPOINT: str = _require("EMBEDDING_ENDPOINT")
-EMBEDDING_API_KEY: str = _require("EMBEDDING_API_KEY")
+# Gateway (OpenAI-compatible /v1/embeddings): falls back to LLM_API_KEY so one
+# gateway key covers both. EMBEDDING_MODEL / EMBEDDING_DIMENSIONS are sent in
+# the request body when set (Azure deployment URLs don't need them).
+EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY") or os.getenv("LLM_API_KEY") or _require("EMBEDDING_API_KEY")
+EMBEDDING_MODEL: str | None = os.getenv("EMBEDDING_MODEL") or None
 
 # --- Compile agent LLM endpoint (Anthropic Messages API compatible) ---------
 # Preferred: the Nexteer AI Gateway (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL).
@@ -34,6 +38,6 @@ VAULTS_ROOT: Path = Path(os.getenv("VAULTS_ROOT", "./vaults")).resolve()
 WIKIS_CONFIG: Path = Path(os.getenv("WIKIS_CONFIG", "./wikis.toml")).resolve()
 DEFAULT_WIKI: str = os.getenv("DEFAULT_WIKI", "work")
 
-EMBEDDING_DIMENSIONS = 1536
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
 DEFAULT_SEARCH_LIMIT = 10
 MAX_CHUNK_WORDS = 400

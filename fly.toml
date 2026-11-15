@@ -17,6 +17,10 @@ primary_region = "ord"   # Chicago — closest to Michigan/US-Central
   # Compile agent via Nexteer AI Gateway (LLM_API_KEY is a fly secret).
   LLM_BASE_URL = "https://ai-gateway.nexteer.app"
   LLM_MODEL = "deepseek-v4-flash"
+  # Embeddings via the same gateway key (text-embedding-3-large pinned to 1536 dims).
+  EMBEDDING_ENDPOINT = "https://ai-gateway.nexteer.app/v1/embeddings"
+  EMBEDDING_MODEL = "text-embedding-3-large"
+  EMBEDDING_DIMENSIONS = "1536"
   # Vault data source of truth (cloned onto the volume at boot). No scheme/token
   # here — the entrypoint prepends https + the GITHUB_TOKEN secret.
   VAULTS_REPO = "github.com/mekwins/brain-vaults.git"
