@@ -15,9 +15,15 @@ def _require(key: str) -> str:
 EMBEDDING_ENDPOINT: str = _require("EMBEDDING_ENDPOINT")
 EMBEDDING_API_KEY: str = _require("EMBEDDING_API_KEY")
 
-# Azure AI Foundry endpoint for Claude (replaces direct Anthropic API key)
-ANTHROPIC_FOUNDRY_BASE_URL: str = _require("ANTHROPIC_FOUNDRY_BASE_URL")
-ANTHROPIC_FOUNDRY_API_KEY: str = _require("ANTHROPIC_FOUNDRY_API_KEY")
+# --- Compile agent LLM endpoint (Anthropic Messages API compatible) ---------
+# Preferred: the Nexteer AI Gateway (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL).
+# Fallback: the legacy Azure AI Foundry vars, so existing deployments keep
+# working until the gateway secrets are set.
+LLM_BASE_URL: str = os.getenv("LLM_BASE_URL") or _require("ANTHROPIC_FOUNDRY_BASE_URL")
+LLM_API_KEY: str = os.getenv("LLM_API_KEY") or _require("ANTHROPIC_FOUNDRY_API_KEY")
+LLM_MODEL: str = os.getenv("LLM_MODEL", "claude-sonnet-4-6")
+# Optional gateway AI Orchestration profile (sent as X-AI-Profile header).
+LLM_PROFILE: str | None = os.getenv("LLM_PROFILE") or None
 
 # Optional API key — if set, the MCP HTTP server requires x-api-key header
 MCP_API_KEY: str | None = os.getenv("MCP_API_KEY") or None

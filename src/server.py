@@ -1,7 +1,8 @@
-"""Brain MCP server — SSE transport with optional API key auth."""
+"""Brain MCP server — Streamable HTTP transport with optional API key auth."""
 
 from __future__ import annotations
 
+import contextlib
 import anyio
 import argparse
 import json
@@ -160,28 +161,36 @@ async def brain_compile_tool(
     return result
 
 
-async def _run_sse() -> None:
-    app = mcp.sse_app()
-    if MCP_API_KEY:
-        app = APIKeyMiddleware(app, api_key=MCP_API_KEY)
+async def _run_http() -> None:
+    # streamable_http_app requires its session manager's lifespan to run,
+    # otherwise POSTs raise "Task group is not initialized". We wrap the
+    # Starlette app with a lifespan that enters mcp.session_manager.run().
+    inner = mcp.streamable_http_app()
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app):
+        async with mcp.session_manager.run():
+            yield
+
+    inner.router.lifespan_context = lifespan
+    app = APIKeyMiddleware(inner, api_key=MCP_API_KEY) if MCP_API_KEY else inner
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
+    await uvicorn.Server(config).serve()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Brain MCP server")
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse"],
-        default="sse",
-        help="Transport mode (default: sse)",
+        choices=["stdio", "http"],
+        default="http",
+        help="Transport mode (default: http = Streamable HTTP on /mcp)",
     )
     args = parser.parse_args()
 
-    if args.transport == "sse":
-        print(f"Brain MCP server (SSE) starting on http://{HOST}:{PORT}/sse", flush=True)
-        anyio.run(_run_sse)
+    if args.transport == "http":
+        print(f"Brain MCP server (Streamable HTTP) starting on http://{HOST}:{PORT}/mcp", flush=True)
+        anyio.run(_run_http)
     else:
         mcp.run(transport="stdio")
 

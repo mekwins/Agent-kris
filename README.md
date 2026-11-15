@@ -99,8 +99,11 @@ EMBEDDING_ENDPOINT=https://<your-resource>.openai.azure.com/openai/deployments/t
 EMBEDDING_API_KEY=<your-azure-key>
 
 # Compile agent (Claude via Azure AI Foundry, or plug in ANTHROPIC_API_KEY directly)
-ANTHROPIC_FOUNDRY_BASE_URL=https://<your-foundry-resource>.services.ai.azure.com/anthropic/v1
-ANTHROPIC_FOUNDRY_API_KEY=<your-foundry-key>
+LLM_BASE_URL=https://ai-gateway.nexteer.app
+LLM_API_KEY=<gateway-service-key>
+LLM_MODEL=deepseek-v4-flash
+# LLM_PROFILE=<optional gateway AI Orchestration profile, sent as X-AI-Profile>
+# Legacy fallback if LLM_* unset: ANTHROPIC_FOUNDRY_BASE_URL / ANTHROPIC_FOUNDRY_API_KEY
 
 # Multi-vault
 VAULTS_ROOT=./vaults

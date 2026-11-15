@@ -13,7 +13,7 @@ from anthropic import AsyncAnthropic
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 
-from src.config import ANTHROPIC_FOUNDRY_BASE_URL, ANTHROPIC_FOUNDRY_API_KEY, MCP_API_KEY
+from src.config import LLM_BASE_URL, LLM_API_KEY, MCP_API_KEY
 
 MODEL = "claude-sonnet-4-6"
 MCP_URL = "http://127.0.0.1:8765/sse"
@@ -79,9 +79,9 @@ async def _chat_turn(messages: list[dict], tools: list[dict]) -> tuple[str, list
     Returns (assistant_text, updated_messages).
     """
     client = AsyncAnthropic(
-        base_url=ANTHROPIC_FOUNDRY_BASE_URL,
-        api_key=ANTHROPIC_FOUNDRY_API_KEY,
-        default_headers={"api-key": ANTHROPIC_FOUNDRY_API_KEY},
+        base_url=LLM_BASE_URL,
+        api_key=LLM_API_KEY,
+        default_headers={"api-key": LLM_API_KEY, "Authorization": f"Bearer {LLM_API_KEY}"},
     )
 
     loop_messages = list(messages)

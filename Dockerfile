@@ -33,4 +33,4 @@ ENV HOST=0.0.0.0 \
 EXPOSE 8080
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["python", "-m", "src.server", "--transport", "sse"]
+CMD ["python", "-m", "src.server", "--transport", "http"]

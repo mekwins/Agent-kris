@@ -24,12 +24,12 @@ from typing import Any
 import frontmatter as fm
 from anthropic import AsyncAnthropic, APITimeoutError, APIConnectionError, APIStatusError
 
-from src.config import ANTHROPIC_FOUNDRY_BASE_URL, ANTHROPIC_FOUNDRY_API_KEY
+from src.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_PROFILE
 from src import vault as vault_ops, vector_store, gitsync
 from src import embed as embedder
 from src.vaults import Vault, get_vault
 
-MODEL = "claude-sonnet-4-6"
+MODEL = LLM_MODEL  # set via LLM_MODEL env var
 MAX_ITERATIONS = 50  # safety cap on the agentic loop
 MODEL_CALL_MAX_ATTEMPTS = 2  # our own retry on top of the SDK's internal retries,
 # for when a model call fails even after the SDK exhausts its own max_retries
@@ -244,9 +244,15 @@ class BrainAgent:
         # hourly cron compiles until it broke the JSON response transport.
         self._timing_log: list[dict[str, Any]] = []
         self.client = AsyncAnthropic(
-            base_url=ANTHROPIC_FOUNDRY_BASE_URL,
-            api_key=ANTHROPIC_FOUNDRY_API_KEY,
-            default_headers={"api-key": ANTHROPIC_FOUNDRY_API_KEY},
+            base_url=LLM_BASE_URL,
+            api_key=LLM_API_KEY,
+            # x-api-key comes from api_key; also send the forms Azure Foundry
+            # ("api-key") and the Nexteer gateway (Bearer) accept.
+            default_headers={
+                "api-key": LLM_API_KEY,
+                "Authorization": f"Bearer {LLM_API_KEY}",
+                **({"X-AI-Profile": LLM_PROFILE} if LLM_PROFILE else {}),
+            },
             # Azure Foundry shows high tail-latency variance on big multi-tool-call
             # turns (observed normal range: 2-136s; one outlier: 632s — same type
             # of request, huge unused rate-limit headroom both times, so not
