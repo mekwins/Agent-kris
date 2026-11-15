@@ -173,6 +173,9 @@ async def _run_http() -> None:
             yield
 
     inner.router.lifespan_context = lifespan
+    # Also serve the legacy SSE transport (/sse + /messages/) on the same port
+    # so existing clients configured with .../sse keep working.
+    inner.router.routes.extend(mcp.sse_app().routes)
     app = APIKeyMiddleware(inner, api_key=MCP_API_KEY) if MCP_API_KEY else inner
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="info")
     await uvicorn.Server(config).serve()
@@ -182,14 +185,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Brain MCP server")
     parser.add_argument(
         "--transport",
-        choices=["stdio", "http"],
+        choices=["stdio", "http", "sse"],
         default="http",
-        help="Transport mode (default: http = Streamable HTTP on /mcp)",
+        help="Transport mode (default: http = Streamable HTTP on /mcp, plus legacy SSE on /sse; 'sse' is an alias)",
     )
     args = parser.parse_args()
 
-    if args.transport == "http":
-        print(f"Brain MCP server (Streamable HTTP) starting on http://{HOST}:{PORT}/mcp", flush=True)
+    if args.transport in ("http", "sse"):
+        print(f"Brain MCP server starting on http://{HOST}:{PORT}/mcp (Streamable HTTP) and /sse (legacy SSE)", flush=True)
         anyio.run(_run_http)
     else:
         mcp.run(transport="stdio")
